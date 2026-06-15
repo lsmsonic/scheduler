@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>우리아이 공부 스케줄러 & 데일리 To-Do</title>
+  <title>우리아이 공부 스케줄러</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,7 @@
 
   <!-- Screen 1: Room Lock PIN Screen (Optional, shown if roomLockPin is enabled) -->
   <div id="room-lock-screen" class="modal-backdrop">
-    <div class="modal glass-panel" style="text-align: center;">
+    <div class="modal" style="text-align: center;">
       <div class="modal-header" style="justify-content: center;">
         <h3><i class="fa-solid fa-lock" style="color: var(--primary); margin-right: 0.5rem;"></i>공부방 비밀번호 입력</h3>
       </div>
@@ -32,18 +32,18 @@
       </div>
       
       <div class="pin-grid">
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('1')">1</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('2')">2</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('3')">3</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('4')">4</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('5')">5</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('6')">6</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('7')">7</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('8')">8</button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('9')">9</button>
-        <button class="btn btn-secondary pin-key" onclick="clearRoomPin()"><i class="fa-solid fa-rotate-left"></i></button>
-        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('0')">0</button>
-        <button class="btn btn-secondary pin-key" onclick="deleteRoomPin()"><i class="fa-solid fa-delete-left"></i></button>
+        <button class="btn pin-key" onclick="enterRoomPin('1')">1</button>
+        <button class="btn pin-key" onclick="enterRoomPin('2')">2</button>
+        <button class="btn pin-key" onclick="enterRoomPin('3')">3</button>
+        <button class="btn pin-key" onclick="enterRoomPin('4')">4</button>
+        <button class="btn pin-key" onclick="enterRoomPin('5')">5</button>
+        <button class="btn pin-key" onclick="enterRoomPin('6')">6</button>
+        <button class="btn pin-key" onclick="enterRoomPin('7')">7</button>
+        <button class="btn pin-key" onclick="enterRoomPin('8')">8</button>
+        <button class="btn pin-key" onclick="enterRoomPin('9')">9</button>
+        <button class="btn pin-key" onclick="clearRoomPin()"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="btn pin-key" onclick="enterRoomPin('0')">0</button>
+        <button class="btn pin-key" onclick="deleteRoomPin()"><i class="fa-solid fa-delete-left"></i></button>
       </div>
     </div>
   </div>
@@ -56,10 +56,10 @@
     </div>
     
     <div style="margin-top: 4rem; display: flex; justify-content: center; gap: 1rem;">
-      <button class="btn btn-secondary" onclick="openAdminAuthModal()">
+      <button class="btn" onclick="openAdminAuthModal()">
         <i class="fa-solid fa-user-gear"></i> 부모 관리 모드
       </button>
-      <button class="btn btn-secondary btn-icon" id="theme-toggle-profiles" onclick="toggleTheme()">
+      <button class="btn btn-icon-only" id="theme-toggle-profiles" onclick="toggleTheme()">
         <i class="fa-solid fa-moon"></i>
       </button>
     </div>
@@ -67,87 +67,104 @@
 
   <!-- Screen 3: Child Main Dashboard (Visible after profile selection) -->
   <div id="dashboard-screen" class="container" style="display: none;">
-    <header>
-      <div class="brand">
-        <span id="current-child-avatar" style="font-size: 2.2rem; cursor: pointer; transition: transform 0.3s;" onclick="goToProfileSelection()">🧸</span>
-        <div>
-          <h1 id="current-child-name-heading">소은이의 공부방</h1>
-          <p id="current-date-string" style="font-size: 0.85rem; color: var(--text-secondary);">2026년 6월 15일 월요일</p>
+    
+    <!-- Top Header Card -->
+    <header class="top-header">
+      <div class="brand-wrapper">
+        <i class="fa-solid fa-graduation-cap brand-icon"></i>
+        <div class="brand-info">
+          <h1>우리아이 공부 스케줄러</h1>
+          <p>매일매일 조금씩 자라나는 우리아이 학습 플래너</p>
         </div>
       </div>
       
-      <div class="header-controls">
-        <!-- Streak counter -->
-        <div class="streak-box">
-          <i class="fa-solid fa-fire streak-icon"></i>
-          <div>
-            <span class="streak-count" id="streak-days">0</span>일 연속
-          </div>
-        </div>
-        
-        <button class="btn btn-secondary btn-icon" onclick="goToProfileSelection()" title="프로필 선택">
-          <i class="fa-solid fa-user-friends"></i>
+      <!-- Live Clock (dynamic date format matching screenshot) -->
+      <div class="header-clock">
+        <i class="fa-regular fa-clock"></i>
+        <span id="current-date-string">2026년 6월 15일 (월요일) 오후 05:08</span>
+      </div>
+      
+      <div class="header-buttons">
+        <button class="btn" onclick="goToProfileSelection()">
+          <i class="fa-solid fa-user-friends"></i> 프로필 전환
         </button>
-        <button class="btn btn-secondary btn-icon" onclick="openAdminAuthModal()" title="부모 관리 모드">
-          <i class="fa-solid fa-lock-open"></i>
-        </button>
-        <button class="btn btn-secondary btn-icon" id="theme-toggle-dashboard" onclick="toggleTheme()" title="화면 테마 변경">
+        <button class="btn btn-icon-only" id="theme-toggle-dashboard" onclick="toggleTheme()">
           <i class="fa-solid fa-moon"></i>
+        </button>
+        <button class="btn" onclick="openAdminAuthModal()">
+          <i class="fa-solid fa-user-gear"></i> 부모 관리 모드
         </button>
       </div>
     </header>
 
     <main class="dashboard-grid">
-      <!-- Left side: Today's Tasks & Calendar -->
-      <section style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <!-- Left side: Today's Tasks & Progress -->
+      <section style="display: flex; flex-direction: column;">
         
-        <!-- Welcome banner with dynamic quotes -->
+        <!-- Welcome banner with avatar and quotes -->
         <div class="welcome-banner">
-          <div class="welcome-info">
-            <h2 id="welcome-message">안녕, 소은아! 👋</h2>
-            <p id="motivational-quote" class="quote-box">오늘도 멋진 하루를 만들어봐요! ✨</p>
+          <div class="welcome-avatar-wrapper">
+            <span id="current-child-avatar">🧸</span>
+          </div>
+          <div class="welcome-text">
+            <h2 id="welcome-message">안녕, 소은이! 👋</h2>
+            <p id="motivational-quote">오늘도 멋진 하루를 만들어봐요! ✨</p>
           </div>
         </div>
 
-        <!-- Progress Tracker -->
-        <div class="glass-panel dashboard-panel">
-          <div class="progress-container">
-            <div class="progress-header">
-              <span>오늘 공부 달성률</span>
-              <span id="progress-percentage">0%</span>
-            </div>
-            <div class="progress-bar-bg">
-              <div id="progress-bar-fill" class="progress-bar-fill"></div>
-            </div>
+        <!-- Main Dashboard Flat Card -->
+        <div class="flat-card">
+          <!-- Today's Progress Section -->
+          <div class="card-section-header">
+            <span><i class="fa-solid fa-chart-line"></i> 오늘의 학습 완료율</span>
+            <span id="progress-percentage" class="progress-percentage">0%</span>
           </div>
           
-          <div style="font-size: 0.9rem; color: var(--text-secondary); text-align: center;" id="progress-text-summary">
-            오늘 할 일 0개 중에 0개를 끝마쳤어요!
+          <div class="progress-track">
+            <div id="progress-bar-fill" class="progress-fill"></div>
           </div>
-        </div>
-
-        <!-- Today's Tasks To-Do List -->
-        <div class="glass-panel dashboard-panel">
-          <h3 class="todo-section-title">
-            <i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> 오늘 완료할 공부 & 할 일
-          </h3>
-          <div class="todo-list" id="todo-list">
+          
+          <!-- Today's Tasks Section -->
+          <div class="card-section-header" style="margin-top: 2.5rem; margin-bottom: 1.25rem;">
+            <span><i class="fa-solid fa-square-check" style="color: var(--primary);"></i> 오늘 공부할 일 리스트</span>
+          </div>
+          
+          <div class="todo-list-container" id="todo-list">
             <!-- Dynamic Daily Tasks go here -->
           </div>
         </div>
       </section>
 
-      <!-- Right side: Weekly Calendar Stamp -->
-      <aside>
-        <div class="glass-panel dashboard-panel" style="height: 100%;">
-          <h3 class="todo-section-title">
-            <i class="fa-solid fa-calendar-week" style="color: var(--secondary);"></i> 이번 주 도장판
-          </h3>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-            하루의 공부를 모두 마치면 멋진 도장을 받아보세요!
-          </p>
+      <!-- Right side: Sidebar Praise & Weekly Stamp -->
+      <aside style="display: flex; flex-direction: column; gap: 1.75rem;">
+        
+        <!-- Sidebar Card 1: Achievement Board -->
+        <div class="flat-card" style="padding: 1.75rem;">
+          <div class="card-section-header">
+            <span><i class="fa-solid fa-trophy" style="color: var(--warning);"></i> 성취 칭찬 보드</span>
+          </div>
           
-          <div class="weekly-calendar" id="weekly-calendar">
+          <div class="streak-praise-card">
+            <span class="streak-praise-icon">🔥</span>
+            <div class="streak-praise-text">
+              <span class="streak-praise-label">연속 공부 달성</span>
+              <span class="streak-praise-count"><span id="streak-days">0</span>일째 이어지는 중!</span>
+            </div>
+          </div>
+          
+          <div class="streak-helper-quote">
+            “오늘 공부를 완수하면 내일 활활 타오르는 연속 공부 스탬프가 켜져요! 🔥”
+          </div>
+        </div>
+
+        <!-- Sidebar Card 2: Weekly Stamp Calendar -->
+        <div class="flat-card" style="padding: 1.75rem;">
+          <div class="card-section-header with-subtitle">
+            <span><i class="fa-solid fa-calendar-check" style="color: var(--secondary);"></i> 이번 주 달성 현황</span>
+          </div>
+          <p class="card-section-subtitle">요일별 완료 상황을 표시합니다.</p>
+          
+          <div class="weekly-stamps-grid" id="weekly-calendar">
             <!-- Monday to Sunday Stamp grids -->
           </div>
         </div>
@@ -161,7 +178,7 @@
 
   <!-- Admin Auth PIN Modal (Parent verification) -->
   <div id="admin-auth-modal" class="modal-backdrop">
-    <div class="modal glass-panel" style="text-align: center;">
+    <div class="modal" style="text-align: center;">
       <div class="modal-header">
         <h3>부모님 확인 인증</h3>
         <button class="modal-close" onclick="closeAdminAuthModal()">&times;</button>
@@ -176,18 +193,18 @@
       </div>
       
       <div class="pin-grid">
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('1')">1</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('2')">2</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('3')">3</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('4')">4</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('5')">5</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('6')">6</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('7')">7</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('8')">8</button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('9')">9</button>
-        <button class="btn btn-secondary pin-key" onclick="clearAdminPin()"><i class="fa-solid fa-rotate-left"></i></button>
-        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('0')">0</button>
-        <button class="btn btn-secondary pin-key" onclick="deleteAdminPin()"><i class="fa-solid fa-delete-left"></i></button>
+        <button class="btn pin-key" onclick="enterAdminPin('1')">1</button>
+        <button class="btn pin-key" onclick="enterAdminPin('2')">2</button>
+        <button class="btn pin-key" onclick="enterAdminPin('3')">3</button>
+        <button class="btn pin-key" onclick="enterAdminPin('4')">4</button>
+        <button class="btn pin-key" onclick="enterAdminPin('5')">5</button>
+        <button class="btn pin-key" onclick="enterAdminPin('6')">6</button>
+        <button class="btn pin-key" onclick="enterAdminPin('7')">7</button>
+        <button class="btn pin-key" onclick="enterAdminPin('8')">8</button>
+        <button class="btn pin-key" onclick="enterAdminPin('9')">9</button>
+        <button class="btn pin-key" onclick="clearAdminPin()"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="btn pin-key" onclick="enterAdminPin('0')">0</button>
+        <button class="btn pin-key" onclick="deleteAdminPin()"><i class="fa-solid fa-delete-left"></i></button>
       </div>
     </div>
   </div>

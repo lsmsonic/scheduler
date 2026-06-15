@@ -12,9 +12,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadData();
   initTheme();
   
+  // Live clock updating
+  updateLiveClock();
+  setInterval(updateLiveClock, 30000);
+  
   // Start check for lock or profiles
   checkRoomLock();
 });
+
+// Live Clock matching exactly: 2026년 6월 15일 (월요일) 오후 05:08
+function updateLiveClock() {
+  const days = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
+  const now = new Date();
+  
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const date = now.getDate();
+  const dayName = days[now.getDay()];
+  
+  let hours = now.getHours();
+  const ampm = hours >= 12 ? "오후" : "오전";
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  
+  const timeString = `${year}년 ${month}월 ${date}일 (${dayName}) ${ampm} ${String(hours).padStart(2, '0')}:${minutes}`;
+  const clockEl = document.getElementById("current-date-string");
+  if (clockEl) {
+    clockEl.innerText = timeString;
+  }
+}
 
 // 1. Environment and Data Persistence
 async function detectBackend() {
@@ -34,7 +61,6 @@ async function loadData() {
       if (localData) {
         data = JSON.parse(localData);
       } else {
-        // Fetch default configuration from seed file
         const response = await fetch("/data.json");
         data = await response.json();
         localStorage.setItem("study_scheduler_data", JSON.stringify(data));
@@ -50,7 +76,6 @@ async function loadData() {
   } catch (err) {
     console.error("Data load error, loading fallback empty data:", err);
     showToast("데이터를 불러오는 데 실패하여 로컬 백업을 사용합니다.", "error");
-    // Fallback to local storage if API fails
     const localFallback = localStorage.getItem("study_scheduler_data");
     if (localFallback) {
       data = JSON.parse(localFallback);
@@ -77,7 +102,6 @@ async function saveData() {
   } catch (err) {
     console.error("Data save error:", err);
     showToast("서버와 동기화하지 못했습니다. 로컬 저장소에 보관합니다.", "warning");
-    // Always backup locally
     localStorage.setItem("study_scheduler_data", JSON.stringify(data));
   }
 }
@@ -86,14 +110,12 @@ async function saveData() {
 function checkRoomLock() {
   const roomLockPin = data.settings?.roomLockPin;
   if (roomLockPin && roomLockPin !== "0000") {
-    // Show lock screen
     document.getElementById("room-lock-screen").classList.add("active");
     document.getElementById("profiles-screen").style.display = "none";
     document.getElementById("dashboard-screen").style.display = "none";
     roomPinInput = "";
     updatePinDots("room");
   } else {
-    // Skip to profile selection
     document.getElementById("room-lock-screen").classList.remove("active");
     showProfilesScreen();
   }
@@ -154,7 +176,6 @@ function enterAdminPin(num) {
       if (adminPinInput === data.settings.parentPin) {
         showToast("부모님 확인 완료!", "success");
         closeAdminAuthModal();
-        // Redirect to admin panel
         window.location.href = "/admin.html";
       } else {
         showToast("비밀번호가 올바르지 않습니다.", "error");
@@ -211,10 +232,9 @@ function showProfilesScreen() {
     profileCard.className = "profile-card";
     profileCard.onclick = () => selectProfile(name);
     
-    // Using clean Emoji avatars or images if URLs
-    let avatarHtml = `<span style="font-size: 3.5rem; display: flex; align-items: center; justify-content: center; height: 100%;">${child.avatar || '🧸'}</span>`;
+    let avatarHtml = `<span style="font-size: 3rem; display: flex; align-items: center; justify-content: center; height: 100%;">${child.avatar || '🧸'}</span>`;
     if (child.avatar && (child.avatar.startsWith("http") || child.avatar.startsWith("/"))) {
-      avatarHtml = `<img class="profile-avatar" src="${child.avatar}" alt="${name}">`;
+      avatarHtml = `<img src="${child.avatar}" alt="${name}">`;
     }
     
     profileCard.innerHTML = `
@@ -233,11 +253,9 @@ function selectProfile(name) {
   data.activeChild = name;
   saveData();
   
-  // Transition to dashboard
   document.getElementById("profiles-screen").style.display = "none";
   document.getElementById("dashboard-screen").style.display = "block";
   
-  // Initialize dashboard
   initDashboard();
 }
 
@@ -251,19 +269,13 @@ function initDashboard() {
   const child = data.children[activeChild];
   if (!child) return;
   
-  // Set avatar and name
   const avatarEl = document.getElementById("current-child-avatar");
   if (child.avatar && (child.avatar.startsWith("http") || child.avatar.startsWith("/"))) {
-    avatarEl.outerHTML = `<img id="current-child-avatar" class="profile-avatar" style="width: 48px; height: 48px; border-radius: 8px; cursor: pointer;" src="${child.avatar}" onclick="goToProfileSelection()">`;
+    avatarEl.outerHTML = `<img id="current-child-avatar" class="profile-avatar" style="width: 100%; height: 100%; object-fit: cover;" src="${child.avatar}">`;
   } else {
-    // Reset to span if it was an image
     if (avatarEl.tagName === "IMG") {
       const span = document.createElement("span");
       span.id = "current-child-avatar";
-      span.style.fontSize = "2.2rem";
-      span.style.cursor = "pointer";
-      span.style.transition = "transform 0.3s";
-      span.onclick = goToProfileSelection;
       span.innerText = child.avatar || "🧸";
       avatarEl.replaceWith(span);
     } else {
@@ -271,9 +283,6 @@ function initDashboard() {
     }
   }
   
-  document.getElementById("current-child-name-heading").innerText = `${activeChild}의 공부방`;
-  
-  // Welcome and Quote
   document.getElementById("welcome-message").innerText = `안녕, ${activeChild}! 👋`;
   if (data.settings.motivationalQuotes && data.settings.motivationalQuotes.length > 0) {
     const quotes = data.settings.motivationalQuotes;
@@ -281,18 +290,13 @@ function initDashboard() {
     document.getElementById("motivational-quote").innerText = randomQuote;
   }
   
-  // Set current date text
-  const days = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${days[now.getDay()]}`;
-  document.getElementById("current-date-string").innerText = dateStr;
+  updateLiveClock();
   
-  // Initialize history object if not exists
   if (!child.history) {
     child.history = {};
   }
   
-  const todayKey = getLocalDateString(now);
+  const todayKey = getLocalDateString(new Date());
   if (!child.history[todayKey]) {
     child.history[todayKey] = {
       completed: [],
@@ -301,13 +305,11 @@ function initDashboard() {
     };
   }
   
-  // Update UI Elements
   renderTodoList();
   updateStreakCount();
   renderWeeklyCalendar();
 }
 
-// Format date to local YYYY-MM-DD
 function getLocalDateString(date) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -315,7 +317,6 @@ function getLocalDateString(date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// Get standard day of the week in English key
 function getDayOfWeekKey(date) {
   const keys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   return keys[date.getDay()];
@@ -327,17 +328,14 @@ function renderTodoList() {
   const dayKey = getDayOfWeekKey(new Date());
   const dailyHistory = child.history[todayKey];
   
-  // Load scheduled subjects for today
   const scheduledTasks = child.weeklySchedule?.[dayKey] || [];
-  
-  // Load general todos for today
   const generalTodos = dailyHistory.todos || [];
   
   const listEl = document.getElementById("todo-list");
   listEl.innerHTML = "";
   
   if (scheduledTasks.length === 0 && generalTodos.length === 0) {
-    listEl.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+    listEl.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 3rem 0;">
       <i class="fa-solid fa-mug-hot" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
       <p>오늘 계획된 공부나 해야 할 일이 없습니다.</p>
     </div>`;
@@ -356,24 +354,28 @@ function renderTodoList() {
     const completedTime = dailyHistory.completedTimes?.[task.id] || "";
     
     const itemEl = document.createElement("div");
-    itemEl.className = `todo-item ${isCompleted ? 'completed' : ''}`;
+    itemEl.className = `task-item-card ${isCompleted ? 'completed' : ''}`;
     itemEl.onclick = () => toggleTask(task.id, false);
     
+    // Tag on right: Show task time or "오늘 중"
+    const rightBadge = task.time 
+      ? `<div class="task-badge-today"><i class="fa-regular fa-clock"></i> ${task.time}</div>`
+      : `<div class="task-badge-today"><i class="fa-solid fa-calendar-day"></i> 오늘 중</div>`;
+    
     itemEl.innerHTML = `
-      <div class="todo-left">
-        <div class="todo-checkbox">
+      <div class="task-card-left">
+        <div class="task-checkbox-circle">
           <i class="fa-solid fa-check"></i>
         </div>
-        <div class="todo-info">
-          <span class="todo-subject">${task.subject}</span>
-          <div class="todo-meta">
-            <span>${task.target || ''}</span>
-            ${task.time ? `<span><i class="fa-regular fa-clock"></i> ${task.time}</span>` : ''}
-            ${isCompleted && completedTime ? `<span class="todo-completed-time"><i class="fa-solid fa-circle-check"></i> ${completedTime} 완료</span>` : ''}
-          </div>
+        <div class="task-card-info">
+          <span class="subject-badge">${task.subject}</span>
+          <span class="task-name">
+            ${task.target || ''}
+            ${isCompleted && completedTime ? `<span class="task-completed-time">${completedTime} 완료</span>` : ''}
+          </span>
         </div>
       </div>
-      <div class="todo-tag">매주 ${getDayLabelKorean(dayKey)}</div>
+      ${rightBadge}
     `;
     listEl.appendChild(itemEl);
   });
@@ -384,36 +386,32 @@ function renderTodoList() {
     if (isCompleted) completedCount++;
     
     const itemEl = document.createElement("div");
-    itemEl.className = `todo-item ${isCompleted ? 'completed' : ''}`;
+    itemEl.className = `task-item-card ${isCompleted ? 'completed' : ''}`;
     itemEl.onclick = () => toggleTask(todo.id, true);
     
+    const rightBadge = todo.time 
+      ? `<div class="task-badge-today"><i class="fa-regular fa-clock"></i> ${todo.time}</div>`
+      : `<div class="task-badge-today"><i class="fa-solid fa-calendar-day"></i> 오늘 중</div>`;
+    
     itemEl.innerHTML = `
-      <div class="todo-left">
-        <div class="todo-checkbox">
+      <div class="task-card-left">
+        <div class="task-checkbox-circle">
           <i class="fa-solid fa-check"></i>
         </div>
-        <div class="todo-info">
-          <span class="todo-subject">${todo.target}</span>
-          <div class="todo-meta">
-            ${todo.time ? `<span><i class="fa-regular fa-clock"></i> ${todo.time}</span>` : ''}
-            ${isCompleted && todo.completedTime ? `<span class="todo-completed-time"><i class="fa-solid fa-circle-check"></i> ${todo.completedTime} 완료</span>` : ''}
-          </div>
+        <div class="task-card-info">
+          <span class="subject-badge general">오늘 To-Do</span>
+          <span class="task-name">
+            ${todo.target}
+            ${isCompleted && todo.completedTime ? `<span class="task-completed-time">${todo.completedTime} 완료</span>` : ''}
+          </span>
         </div>
       </div>
-      <div class="todo-tag general">오늘 To-Do</div>
+      ${rightBadge}
     `;
     listEl.appendChild(itemEl);
   });
   
   updateProgress(completedCount, totalTasks);
-}
-
-function getDayLabelKorean(key) {
-  const mapping = {
-    "monday": "월요일", "tuesday": "화요일", "wednesday": "수요일",
-    "thursday": "목요일", "friday": "금요일", "saturday": "토요일", "sunday": "일요일"
-  };
-  return mapping[key] || "";
 }
 
 async function toggleTask(id, isGeneralTodo) {
@@ -427,7 +425,6 @@ async function toggleTask(id, isGeneralTodo) {
   let newlyCompleted = false;
   
   if (isGeneralTodo) {
-    // Find general todo and toggle
     const todo = dailyHistory.todos.find(t => t.id === id);
     if (todo) {
       todo.completed = !todo.completed;
@@ -435,7 +432,6 @@ async function toggleTask(id, isGeneralTodo) {
       newlyCompleted = todo.completed;
     }
   } else {
-    // Toggle weekly schedule task
     const index = dailyHistory.completed.indexOf(id);
     if (index > -1) {
       dailyHistory.completed.splice(index, 1);
@@ -452,16 +448,12 @@ async function toggleTask(id, isGeneralTodo) {
     }
   }
   
-  // Trigger effects
   if (newlyCompleted) {
-    triggerConfetti(false); // Small confetti for checking an item
+    triggerConfetti(false);
   }
   
-  // Re-render and save
   renderTodoList();
   await saveData();
-  
-  // Update calendar check in case today's state changed
   renderWeeklyCalendar();
   updateStreakCount();
 }
@@ -471,32 +463,24 @@ function updateProgress(completed, total) {
   
   const fillEl = document.getElementById("progress-bar-fill");
   const percentEl = document.getElementById("progress-percentage");
-  const summaryEl = document.getElementById("progress-text-summary");
   
   fillEl.style.width = `${percentage}%`;
   percentEl.innerText = `${percentage}%`;
   
-  if (total === 0) {
-    summaryEl.innerText = "오늘 할 일이 정의되어 있지 않습니다.";
-  } else if (completed === total) {
-    summaryEl.innerText = `🥳 대단해요! 오늘 해야 할 ${total}개 일정을 모두 완료했습니다!`;
-    // Trigger giant confetti on 100% completion if not already recorded
+  if (total > 0 && completed === total) {
     const todayKey = getLocalDateString(new Date());
     const child = data.children[activeChild];
     if (!child.history[todayKey].celebrated) {
       child.history[todayKey].celebrated = true;
-      triggerConfetti(true); // Big celebration!
+      triggerConfetti(true); // Big explosion!
       saveData();
     }
-  } else {
-    summaryEl.innerText = `오늘 할 일 ${total}개 중에 ${completed}개를 끝마쳤어요! 힘내요!`;
   }
 }
 
-// 5. Confetti Celebration Effect
+// Confetti Pop
 function triggerConfetti(isGiant) {
   if (isGiant) {
-    // Full screen blast
     const duration = 2 * 1000;
     const end = Date.now() + duration;
 
@@ -521,7 +505,6 @@ function triggerConfetti(isGiant) {
       }
     }());
   } else {
-    // Small localized pop
     confetti({
       particleCount: 40,
       spread: 60,
@@ -531,20 +514,19 @@ function triggerConfetti(isGiant) {
   }
 }
 
-// 6. Streak Tracker Logic
+// Streak Tracker
 function updateStreakCount() {
   const child = data.children[activeChild];
   if (!child || !child.history) return;
   
   let streak = 0;
-  let checkDate = new Date(); // Start checking from today
+  let checkDate = new Date();
   
-  // If today is not fully complete, start looking from yesterday
   const todayKey = getLocalDateString(checkDate);
   const todayComplete = isDayFullyCompleted(child, todayKey, checkDate);
   
   if (!todayComplete) {
-    checkDate.setDate(checkDate.getDate() - 1); // Yesterday
+    checkDate.setDate(checkDate.getDate() - 1);
   }
   
   while (true) {
@@ -552,10 +534,7 @@ function updateStreakCount() {
     const hasTasks = getDayTasksCount(child, checkKey, checkDate);
     
     if (hasTasks === 0) {
-      // If no tasks are defined (e.g. weekend with no sched), it doesn't break the streak, skip it
       checkDate.setDate(checkDate.getDate() - 1);
-      
-      // Safety limit to avoid infinite loop on empty schedules
       if (streak === 0 && checkDate < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) {
         break;
       }
@@ -566,7 +545,7 @@ function updateStreakCount() {
       streak++;
       checkDate.setDate(checkDate.getDate() - 1);
     } else {
-      break; // Streak is broken
+      break;
     }
   }
   
@@ -594,21 +573,20 @@ function isDayFullyCompleted(child, dateKey, dateObj) {
   const generalDone = generalTodos.every(todo => todo.completed);
   
   const totalCount = scheduled.length + generalTodos.length;
-  if (totalCount === 0) return false; // If there are no tasks, it's not marked "done" (neutral)
+  if (totalCount === 0) return false;
   
   return scheduledDone && generalDone;
 }
 
-// 7. Weekly Stamp Board
+// Weekly Stamp Board matching vertical capsules layout
 function renderWeeklyCalendar() {
   const child = data.children[activeChild];
   const calendarEl = document.getElementById("weekly-calendar");
   calendarEl.innerHTML = "";
   
-  // Find current week's dates (Monday to Sunday)
   const today = new Date();
-  const currentDay = today.getDay(); // 0 is Sun, 1 is Mon...
-  const distanceToMon = currentDay === 0 ? -6 : 1 - currentDay; // Distance to Monday
+  const currentDay = today.getDay();
+  const distanceToMon = currentDay === 0 ? -6 : 1 - currentDay;
   
   const daysKorean = ["월", "화", "수", "목", "금", "토", "일"];
   const daysEng = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -622,7 +600,6 @@ function renderWeeklyCalendar() {
     
     const isToday = loopKey === getLocalDateString(today);
     
-    // Check completion status
     const scheduled = child.weeklySchedule?.[dayNameEng] || [];
     const historyEntry = child.history?.[loopKey];
     
@@ -632,7 +609,7 @@ function renderWeeklyCalendar() {
     const totalCount = scheduled.length + generalTodos.length;
     
     let stampClass = "";
-    let stampIcon = `<i class="fa-solid fa-stamp" style="opacity: 0.2;"></i>`;
+    let stampIcon = `<i class="fa-solid fa-circle" style="opacity: 0.1; font-size: 0.4rem;"></i>`;
     
     if (totalCount > 0 && historyEntry) {
       const completedSchedCount = scheduled.filter(task => completedSched.includes(task.id)).length;
@@ -641,23 +618,23 @@ function renderWeeklyCalendar() {
       
       if (totalCompleted === totalCount) {
         stampClass = "success";
-        stampIcon = `<i class="fa-solid fa-circle-check"></i>`;
+        stampIcon = `<i class="fa-solid fa-check"></i>`;
       } else if (totalCompleted > 0) {
         stampClass = "partial";
-        stampIcon = `<i class="fa-solid fa-circle-dot"></i>`;
+        stampIcon = `<i class="fa-solid fa-circle-notch"></i>`;
       }
     }
     
-    const dayCol = document.createElement("div");
-    dayCol.className = `calendar-day ${isToday ? 'today' : ''} ${stampClass}`;
+    const capsule = document.createElement("div");
+    capsule.className = `weekly-stamp-capsule ${isToday ? 'active-today' : ''} ${stampClass}`;
     
-    dayCol.innerHTML = `
-      <span class="day-label">${daysKorean[i]}</span>
-      <div class="day-stamp">
+    capsule.innerHTML = `
+      <span class="weekly-stamp-day">${daysKorean[i]}</span>
+      <div class="weekly-stamp-circle">
         ${stampIcon}
       </div>
     `;
-    calendarEl.appendChild(dayCol);
+    calendarEl.appendChild(capsule);
   }
 }
 
@@ -696,7 +673,6 @@ function showToast(message, type = "success") {
   toast.className = `toast active ${type}`;
   msg.innerText = message;
   
-  // Set appropriate icon
   icon.className = "fa-solid";
   if (type === "success") {
     icon.classList.add("fa-circle-check");
@@ -706,7 +682,6 @@ function showToast(message, type = "success") {
     icon.classList.add("fa-triangle-exclamation");
   }
   
-  // Hide after 3 seconds
   setTimeout(() => {
     toast.classList.remove("active");
   }, 3000);
