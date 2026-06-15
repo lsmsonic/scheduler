@@ -30,6 +30,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 프로필 편집 모달 리스너 사전 바인딩
   setupEditProfileModal();
 
+  // 공부 미루기 모달 초기화
+  setupPostponeModal();
+
   // 진입 통제 및 잠금장치 초기화
   setupLockScreenAndProfiles();
   
@@ -174,6 +177,16 @@ function migrateDataSchema() {
     
     migrated = true;
     console.log(`[Migration] 단일 자녀 '${oldName}' 데이터를 다자녀 프로필 구조로 성공적으로 변환 완료.`);
+  }
+  
+  // 4) 각 아동 프로필 내 postponedTasks 필드 추가 검증
+  if (appData.children) {
+    for (const name in appData.children) {
+      if (!appData.children[name].postponedTasks) {
+        appData.children[name].postponedTasks = [];
+        migrated = true;
+      }
+    }
   }
   
   return migrated;
@@ -667,9 +680,40 @@ function renderDashboard() {
   // 3) 오늘 과목 스케줄 가공 & To-Do 리스트 렌더링
   const rawTodaySchedule = childData.weeklySchedule[todayDayNameEng] || [];
   const todayHistory = childData.history[todayDateStr] || [];
+  const postponedTasks = childData.postponedTasks || [];
+  
+  // 오늘 날짜 기준으로 미룬(이월된) regular 태스크의 id 식별
+  const postponedFromTodayIds = postponedTasks
+    .filter(t => t.postponedFromDate === todayDateStr)
+    .map(t => t.originalId);
+
+  // 오늘 스케줄 중 다른 요일로 미루어지지 않은 태스크만 필터링
+  const filteredRegularSchedule = rawTodaySchedule.filter(task => !postponedFromTodayIds.includes(task.id));
+
+  // 오늘이 목표일인 미완료 이월 태스크
+  const postponedToToday = postponedTasks.filter(t => t.targetDate === todayDateStr);
+
+  // 오늘 완료된 이월 태스크들 (히스토리에서 복원하여 렌더링용 태스크로 변환)
+  const completedPostponed = todayHistory
+    .filter(h => h.isPostponed)
+    .map(h => ({
+      id: h.id,
+      originalId: h.originalId,
+      subject: h.subject,
+      target: h.target,
+      time: h.time || "",
+      isPostponed: true
+    }));
+
+  // 오늘 렌더링할 태스크 목록 취합 (일반 + 미완료 이월 + 완료된 이월)
+  const todaySchedule = [
+    ...filteredRegularSchedule,
+    ...postponedToToday.map(t => ({ ...t, isPostponed: true })),
+    ...completedPostponed
+  ];
   
   // 시간 지정이 있는 것을 우선 정렬하고, 지정이 없는 To-Do (anytime)는 맨 밑으로 정렬
-  const todaySchedule = [...rawTodaySchedule].sort((a, b) => {
+  todaySchedule.sort((a, b) => {
     const timeA = a.time || "";
     const timeB = b.time || "";
     if (timeA === "" && timeB !== "") return 1;
@@ -692,9 +736,67 @@ function renderDashboard() {
     todaySchedule.forEach(task => {
       const isCompleted = todayHistory.some(h => h.id === task.id);
       const completionItem = todayHistory.find(h => h.id === task.id);
+      const isPostponed = !!task.isPostponed;
       
       const todoItem = document.createElement('div');
       todoItem.className = `todo-item ${isCompleted ? 'completed' : ''}`;
+      todoItem.dataset.taskId = task.id;
+      
+      const timeLabel = task.time ? `<i class="fa-regular fa-clock"></i> ${task.time}` : `<i class="fa-solid fa-calendar-day"></i> 오늘 중`;
+      const postponeBadge = isPostponed ? `<span class="postponed-badge"><i class="fa-solid fa-clock-rotate-left"></i> 이월</span>` : '';
+      
+      todoItem.innerHTML = `
+        <div class="todo-left">
+          <div class="todo-checkbox-wrapper">
+            <div class="todo-checkmark"></div>
+          </div>
+          <div class="todo-details">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="todo-subject">${task.subject}</span>
+              ${postponeBadge}
+            </div>
+            <span class="todo-title">${task.target}</span>
+          </div>
+        </div>
+        <div class="todo-right">
+          <div class="todo-time">${timeLabel}</div>
+          ${isCompleted ? `<div class="completed-time"><i class="fa-solid fa-circle-check"></i> ${completionItem.completedAt.substring(0, 5)} 완료</div>` : ''}
+          ${!isCompleted ? `<button class="todo-postpone-btn" title="다른 요일로 미루기"><i class="fa-solid fa-calendar-plus"></i> 미루기</button>` : ''}
+        </div>
+      `;
+      
+      todoItem.addEventListener('click', (e) => {
+        toggleTaskCompletion(task, e);
+      });
+
+      if (!isCompleted) {
+        const postponeBtn = todoItem.querySelector('.todo-postpone-btn');
+        if (postponeBtn) {
+          postponeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openPostponeModal(task);
+          });
+        }
+      }
+      
+      listContainer.appendChild(todoItem);
+    });
+  }
+
+  // 3.5) 밀린 공부 (과거 미완료 이월 항목) 렌더링
+  const overdueContainer = document.getElementById('overdue-list-container');
+  const overdueSection = document.getElementById('overdue-tasks-section');
+  const overdueTasks = postponedTasks.filter(t => t.targetDate < todayDateStr);
+  
+  if (overdueTasks.length === 0) {
+    overdueSection.style.display = 'none';
+  } else {
+    overdueSection.style.display = 'block';
+    overdueContainer.innerHTML = '';
+    
+    overdueTasks.forEach(task => {
+      const todoItem = document.createElement('div');
+      todoItem.className = `todo-item`;
       todoItem.dataset.taskId = task.id;
       
       const timeLabel = task.time ? `<i class="fa-regular fa-clock"></i> ${task.time}` : `<i class="fa-solid fa-calendar-day"></i> 오늘 중`;
@@ -705,21 +807,35 @@ function renderDashboard() {
             <div class="todo-checkmark"></div>
           </div>
           <div class="todo-details">
-            <span class="todo-subject">${task.subject}</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span class="todo-subject">${task.subject}</span>
+              <span class="postponed-badge" style="background: rgba(255, 118, 117, 0.15); color: #ff7675; border-color: rgba(255, 118, 117, 0.3);">
+                <i class="fa-solid fa-clock-rotate-left"></i> 밀림 (${task.targetDate})
+              </span>
+            </div>
             <span class="todo-title">${task.target}</span>
           </div>
         </div>
         <div class="todo-right">
           <div class="todo-time">${timeLabel}</div>
-          ${isCompleted ? `<div class="completed-time"><i class="fa-solid fa-circle-check"></i> ${completionItem.completedAt.substring(0, 5)} 완료</div>` : ''}
+          <button class="todo-postpone-btn" title="다른 요일로 미루기"><i class="fa-solid fa-calendar-plus"></i> 미루기</button>
         </div>
       `;
       
       todoItem.addEventListener('click', (e) => {
-        toggleTaskCompletion(task, e);
+        const overdueTaskCompleted = { ...task, isPostponed: true };
+        toggleTaskCompletion(overdueTaskCompleted, e);
       });
       
-      listContainer.appendChild(todoItem);
+      const postponeBtn = todoItem.querySelector('.todo-postpone-btn');
+      if (postponeBtn) {
+        postponeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openPostponeModal(task);
+        });
+      }
+      
+      overdueContainer.appendChild(todoItem);
     });
   }
   
@@ -750,19 +866,57 @@ async function toggleTaskCompletion(task, event) {
   const existingIndex = todayHistory.findIndex(h => h.id === task.id);
   
   if (existingIndex > -1) {
+    const hItem = todayHistory[existingIndex];
     todayHistory.splice(existingIndex, 1);
+    
+    // 만약 이월된 태스크였다면, postponedTasks로 복구(롤백) 처리
+    if (hItem.isPostponed) {
+      if (!childData.postponedTasks) {
+        childData.postponedTasks = [];
+      }
+      childData.postponedTasks.push({
+        id: hItem.id,
+        originalId: hItem.originalId,
+        subject: hItem.subject,
+        target: hItem.target,
+        time: hItem.time || "",
+        postponedFromDate: hItem.postponedFromDate,
+        targetDate: hItem.postponedTargetDate || todayDateStr,
+        targetDay: hItem.postponedTargetDay
+      });
+    }
   } else {
     const completedTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
-    todayHistory.push({
+    
+    const newHistoryItem = {
       id: task.id,
       subject: task.subject,
       target: task.target,
       completedAt: completedTimeStr,
       mood: 'proud'
-    });
+    };
+    
+    // 이월 태스크인 경우 이력 보존용 메타 정보 기록
+    if (task.isPostponed) {
+      newHistoryItem.isPostponed = true;
+      newHistoryItem.originalId = task.originalId;
+      newHistoryItem.postponedFromDate = task.postponedFromDate;
+      newHistoryItem.postponedTargetDate = task.targetDate;
+      newHistoryItem.postponedTargetDay = task.targetDay;
+      newHistoryItem.time = task.time || "";
+    }
+    
+    todayHistory.push(newHistoryItem);
+    
+    // 이월 태스크 완료 시 postponedTasks 배열에서 제거
+    if (task.isPostponed) {
+      childData.postponedTasks = childData.postponedTasks.filter(t => t.id !== task.id);
+    }
     
     // 클릭된 자표 기준 폭죽 파티클 생성
-    createConfettiEffect(event.clientX, event.clientY);
+    if (event && event.clientX && event.clientY) {
+      createConfettiEffect(event.clientX, event.clientY);
+    }
   }
   
   await saveData();
@@ -1064,4 +1218,91 @@ function getFallbackMockData() {
     },
     "activeChild": "소은이"
   };
+}
+
+// 글로벌 상태 변수
+let currentPostponeTask = null;
+
+// 공부 미루기 모달 초기화
+function setupPostponeModal() {
+  const modal = document.getElementById('postpone-modal');
+  const cancelBtn = document.getElementById('postpone-cancel-btn');
+  
+  cancelBtn.addEventListener('click', closePostponeModal);
+  
+  // 요일 선택 버튼 이벤트 바인딩
+  const dayButtons = document.querySelectorAll('.postpone-day-btn');
+  dayButtons.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetDay = btn.getAttribute('data-day');
+      if (currentPostponeTask && targetDay) {
+        await postponeTask(currentPostponeTask, targetDay);
+      }
+    });
+  });
+}
+
+function openPostponeModal(task) {
+  currentPostponeTask = task;
+  document.getElementById('postpone-task-subject').innerText = task.subject;
+  document.getElementById('postpone-task-target').innerText = task.target;
+  document.getElementById('postpone-modal').classList.add('active');
+}
+
+function closePostponeModal() {
+  document.getElementById('postpone-modal').classList.remove('active');
+  currentPostponeTask = null;
+}
+
+async function postponeTask(task, targetDay) {
+  const now = new Date();
+  const todayDateStr = getFormattedDate(now);
+  const currentDayIndex = now.getDay();
+  
+  const DAY_INDEX_MAP = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6
+  };
+  
+  const targetDayIndex = DAY_INDEX_MAP[targetDay];
+  let diff = targetDayIndex - currentDayIndex;
+  if (diff <= 0) {
+    diff += 7;
+  }
+  
+  const targetDate = new Date(now);
+  targetDate.setDate(now.getDate() + diff);
+  const targetDateStr = getFormattedDate(targetDate);
+  
+  const childData = appData.children[activeChild];
+  if (!childData.postponedTasks) {
+    childData.postponedTasks = [];
+  }
+  
+  // 기존 이월 등록된 데이터인지 식별
+  const existingPostponed = childData.postponedTasks.find(t => t.id === task.id);
+  if (existingPostponed) {
+    existingPostponed.targetDate = targetDateStr;
+    existingPostponed.targetDay = targetDay;
+  } else {
+    childData.postponedTasks.push({
+      id: `${task.id}_postponed_${Date.now()}`,
+      originalId: task.id,
+      subject: task.subject,
+      target: task.target,
+      time: task.time || "",
+      postponedFromDate: todayDateStr,
+      targetDate: targetDateStr,
+      targetDay: targetDay
+    });
+  }
+  
+  closePostponeModal();
+  await saveData();
+  renderDashboard();
 }

@@ -1145,6 +1145,74 @@ body.dark-theme .profile-card.add-profile-card .profile-avatar-wrapper {
 }
 
 /* ==========================================
+   13.5. 미루기(요일 이동) 및 밀린 공부 스타일링
+   ========================================== */
+.todo-postpone-btn {
+  background: rgba(108, 92, 231, 0.08);
+  color: var(--color-primary);
+  border: 1px dashed rgba(108, 92, 231, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: var(--transition-smooth);
+}
+
+body.dark-theme .todo-postpone-btn {
+  background: rgba(108, 92, 231, 0.15);
+  color: var(--color-primary-light);
+  border-color: rgba(108, 92, 231, 0.4);
+}
+
+.todo-postpone-btn:hover {
+  background: var(--color-primary);
+  color: white !important;
+  border-color: var(--color-primary) !important;
+  border-style: solid;
+}
+
+body.dark-theme .todo-postpone-btn:hover {
+  background: var(--color-primary-light);
+  color: white !important;
+  border-color: var(--color-primary-light) !important;
+}
+
+.postponed-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff7675;
+  background: rgba(255, 118, 117, 0.1);
+  border: 1px solid rgba(255, 118, 117, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+.postpone-day-btn {
+  transition: var(--transition-smooth);
+}
+
+.postpone-day-btn:hover {
+  background: var(--color-primary) !important;
+  color: white !important;
+  border-color: var(--color-primary) !important;
+  transform: translateY(-2px);
+}
+
+body.dark-theme .postpone-day-btn:hover {
+  background: var(--color-primary-light) !important;
+  border-color: var(--color-primary-light) !important;
+}
+
+/* ==========================================
    14. 모바일 반응형 보강 (Mobile Fine-Tuning)
    ========================================== */
 @media (max-width: 768px) {

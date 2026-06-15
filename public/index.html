@@ -167,6 +167,33 @@
   </div>
 
 
+  <!-- F. 공부 미루기 (요일 이동) 모달 오버레이 -->
+  <div id="postpone-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px; width: 95%;">
+      <div class="modal-title">📅 이 공부를 언제 할까요?</div>
+      <p class="modal-desc">선택한 요일로 공부를 넘겨서 나중에 완료할 수 있습니다.</p>
+      
+      <div style="font-weight: 700; margin-bottom: 16px; font-size: 15px; color: var(--text-primary); background: var(--card-bg); padding: 12px; border-radius: var(--border-radius-sm); border: 1px dashed var(--color-primary-light); text-align: center;">
+        <span id="postpone-task-subject" style="color: var(--color-primary);"></span> - <span id="postpone-task-target"></span>
+      </div>
+
+      <div class="postpone-days-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px;">
+        <button class="btn btn-secondary postpone-day-btn" data-day="monday">월요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="tuesday">화요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="wednesday">수요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="thursday">목요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="friday">금요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="saturday" style="color: #00cec9;">토요일</button>
+        <button class="btn btn-secondary postpone-day-btn" data-day="sunday" style="color: #ff7675;">일요일</button>
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="postpone-cancel-btn" class="btn btn-secondary" style="flex: 1; padding: 10px;">취소</button>
+      </div>
+    </div>
+  </div>
+
+
   <div class="app-container">
     
     <!-- 1. 앱 헤더 영역 -->
@@ -216,6 +243,17 @@
           </div>
           <div class="progress-bar-container">
             <div class="progress-bar-fill" id="progress-bar-fill"></div>
+          </div>
+        </div>
+
+        <!-- 밀린 공부 리스트 (과거 이월 항목 중 미완료) -->
+        <div id="overdue-tasks-section" style="display: none; margin-bottom: 24px; border-bottom: 2px dashed rgba(255, 118, 117, 0.2); padding-bottom: 20px;">
+          <h3 class="section-title" style="color: #ff7675;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: #ff7675;"></i>
+            아직 못 끝낸 밀린 공부!
+          </h3>
+          <div id="overdue-list-container" class="todo-list">
+            <!-- 여기에 동적으로 밀린 공부 리스트 렌더링 -->
           </div>
         </div>
 
