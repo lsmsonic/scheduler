@@ -242,10 +242,9 @@ function showLockScreen() {
     }
     const enteredPin = Array.from(inputs).map(i => i.value).join('');
     const targetPin = (appData.settings && appData.settings.roomLockPin) ? appData.settings.roomLockPin : '0000';
-    const parentBackupPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
     
-    // 설정된 공부방 핀 또는 부모 핀(백업용)으로 해제 가능
-    if (enteredPin === targetPin || enteredPin === parentBackupPin) {
+    // 설정된 공부방 핀으로만 해제 가능
+    if (enteredPin === targetPin) {
       modal.classList.remove('active');
       window.removeEventListener('keypress', inputEnterHandler);
       
