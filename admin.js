@@ -251,7 +251,7 @@ function updateChildSelectDropdowns() {
   
   childrenNames.forEach(name => {
     const child = appData.children[name];
-    const optionText = `${child.avatar || '🧸'} ${name}`;
+    const optionText = `${child.avatar || '👤'} ${name}`;
     
     plannerSelect.innerHTML += `<option value="${name}">${optionText}</option>`;
     historySelect.innerHTML += `<option value="${name}">${optionText}</option>`;
@@ -637,7 +637,11 @@ function setupSettingsForm() {
   
   // 1) 기본 설정 및 비밀번호 바인딩
   document.getElementById('setting-parent-pin').value = appData.settings.parentPin || '1234';
+  
+  // 공부방 진입 비밀번호 세팅
   document.getElementById('setting-room-lock-pin').value = appData.settings.roomLockPin || '0000';
+  
+  // 접속 비밀번호 영역은 항시 노출
   roomLockPinGroup.style.display = 'block';
   
   // 2) 자녀 프로필 리스트 렌더링
@@ -655,6 +659,7 @@ function setupSettingsForm() {
     }
     
     if (editingChildName) {
+      // 3-A) 자녀 프로필 수정 모드
       if (name !== editingChildName && appData.children[name]) {
         alert('이미 같은 이름의 다른 자녀 프로필이 존재합니다.');
         return;
@@ -662,6 +667,7 @@ function setupSettingsForm() {
       
       const oldChildData = appData.children[editingChildName];
       
+      // 이름 키가 변경된 경우 데이터 마이그레이션 및 이전
       if (name !== editingChildName) {
         appData.children[name] = {
           avatar: avatar,
@@ -670,14 +676,17 @@ function setupSettingsForm() {
         };
         delete appData.children[editingChildName];
         
+        // 활성 선택 플래그 갱신
         if (appData.activeChild === editingChildName) appData.activeChild = name;
         if (currentSelectedChildPlanner === editingChildName) currentSelectedChildPlanner = name;
         if (currentSelectedChildHistory === editingChildName) currentSelectedChildHistory = name;
         
+        // 기기 기억 활성 프로필 갱신
         if (localStorage.getItem('family_active_child') === editingChildName) {
           localStorage.setItem('family_active_child', name);
         }
       } else {
+        // 이모지만 변경된 경우
         oldChildData.avatar = avatar;
       }
       
@@ -685,6 +694,7 @@ function setupSettingsForm() {
       resetChildEditState();
       
     } else {
+      // 3-B) 자녀 신규 등록 모드
       if (appData.children[name]) {
         alert('이미 같은 이름의 자녀 프로필이 존재합니다.');
         return;
@@ -746,6 +756,7 @@ function setupSettingsForm() {
       return;
     }
     
+    // 데이터 쓰기
     appData.settings.parentPin = parentPin;
     appData.settings.roomLockEnabled = true; // 항상 접속 잠금 강제 사용
     appData.settings.roomLockPin = roomLockPin;
@@ -891,6 +902,7 @@ function resetChildEditState() {
   }
 }
 
+
 function renderQuotesEditor() {
   const quotesEditor = document.getElementById('quotes-list-editor');
   quotesEditor.innerHTML = '';
@@ -944,6 +956,7 @@ function importDatabase(file) {
     try {
       const importedJson = JSON.parse(e.target.result);
       
+      // 필수 스키마 검사 (멀티 프로필 지원)
       if (!importedJson.settings || (!importedJson.weeklySchedule && !importedJson.children)) {
         alert('올바른 스케줄러 백업 파일이 아닙니다.');
         return;
@@ -951,6 +964,8 @@ function importDatabase(file) {
       
       if (confirm('가져오기를 계속하시면 현재 보관된 모든 스케줄과 아이들의 통계 히스토리가 덮어씌워집니다. 진행하시겠습니까?')) {
         appData = importedJson;
+        
+        // 가져온 데이터가 레거시 스키마일 수 있으므로 마이그레이션 이중 수행
         migrateDataSchema();
         
         const isSaved = await saveData();

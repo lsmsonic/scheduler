@@ -762,7 +762,7 @@ async function toggleTaskCompletion(task, event) {
       mood: 'proud'
     });
     
-    // 클릭된 좌표 기준 폭죽 파티클 생성
+    // 클릭된 자표 기준 폭죽 파티클 생성
     createConfettiEffect(event.clientX, event.clientY);
   }
   
@@ -964,8 +964,10 @@ function toggleTheme() {
 
 function updateThemeIcon(isDark) {
   const icon = document.querySelector('#theme-toggle-btn i');
-  if (icon) {
-    icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+  if (isDark) {
+    icon.className = 'fa-solid fa-sun';
+  } else {
+    icon.className = 'fa-solid fa-moon';
   }
 }
 
