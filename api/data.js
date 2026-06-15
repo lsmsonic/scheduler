@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
           return res.status(200).json(JSON.parse(kvResult.result));
         } else {
           // 최초 실행 시 키가 없는 경우: 로컬 data.json의 기본 구조를 읽어 디비 초기 세팅(Seeding)
-          const localDataPath = path.join(process.cwd(), 'data.json');
+          const localDataPath = path.join(process.cwd(), 'public', 'data.json');
           const localDataStr = fs.readFileSync(localDataPath, 'utf8');
           
           await fetch(process.env.KV_REST_API_URL, {
@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
     } else {
       // 로컬 개발/파일 시스템 폴백 (data.json 조회)
       try {
-        const localDataPath = path.join(process.cwd(), 'data.json');
+        const localDataPath = path.join(process.cwd(), 'public', 'data.json');
         const localData = fs.readFileSync(localDataPath, 'utf8');
         return res.status(200).json(JSON.parse(localData));
       } catch (err) {
@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
     } else {
       // 로컬 개발/파일 시스템 폴백 (data.json 쓰기)
       try {
-        const localDataPath = path.join(process.cwd(), 'data.json');
+        const localDataPath = path.join(process.cwd(), 'public', 'data.json');
         fs.writeFileSync(localDataPath, JSON.stringify(updatedData, null, 2), 'utf8');
         return res.status(200).json({ success: true, message: '로컬 data.json 파일에 성공적으로 저장되었습니다.' });
       } catch (err) {

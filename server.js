@@ -8,13 +8,13 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_FILE = path.join(__dirname, 'public', 'data.json');
 
 // 미들웨어 설정
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(__dirname)); // 현재 디렉토리의 HTML, CSS, JS 정적 제공
-app.use('/scheduler', express.static(__dirname)); // 서브경로 /scheduler로 접속 시의 정적 파일 제공
+app.use(express.static(path.join(__dirname, 'public'))); // public 디렉토리의 HTML, CSS, JS 정적 제공
+app.use('/scheduler', express.static(path.join(__dirname, 'public'))); // 서브경로 /scheduler로 접속 시의 정적 파일 제공
 
 // GET API: 데이터 조회
 app.get('/api/data', (req, res) => {
@@ -61,7 +61,7 @@ app.get('*', (req, res, next) => {
   if (path.extname(req.path)) {
     return res.status(404).send('Not Found');
   }
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
