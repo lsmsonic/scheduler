@@ -1,7 +1,7 @@
 {
   "name": "family-study-scheduler",
-  "version": "1.0.0",
-  "description": "가족 공유형 아이 공부 스케줄러 & To-Do",
+  "version": "2.0.0",
+  "description": "가족 공유형 아이 공부 스케줄러 & 데일리 To-Do (GitHub + Vercel)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2"
+    "express": "^4.21.0"
   },
-  "author": "Antigravity",
+  "author": "",
   "license": "ISC"
 }

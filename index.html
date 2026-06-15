@@ -4,314 +4,201 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>우리아이 공부 스케줄러 & 데일리 To-Do</title>
-  <!-- SEO 메타 태그 -->
-  <meta name="description" content="가족 모두가 공유하고 체크하는 아이의 공부 스케줄표 및 데일리 To-Do 시스템">
-  <!-- FontAwesome 아이콘 링크 -->
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- 커스텀 스타일시트 -->
-  <link rel="stylesheet" href="style.css">
+  <!-- Core Design Stylesheet -->
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Canvas Confetti for Completion Celebrations -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
-  <!-- A. 공부방 진입 비밀번호 확인 모달 오버레이 (진입 차단 장치) -->
-  <div id="room-lock-modal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-title">🔓 공부방 접속 비밀번호</div>
-      <p class="modal-desc">외부 유출을 방지하기 위해 접속 비밀번호 4자리를 입력해주세요.</p>
+  <!-- Screen 1: Room Lock PIN Screen (Optional, shown if roomLockPin is enabled) -->
+  <div id="room-lock-screen" class="modal-backdrop">
+    <div class="modal glass-panel" style="text-align: center;">
+      <div class="modal-header" style="justify-content: center;">
+        <h3><i class="fa-solid fa-lock" style="color: var(--primary); margin-right: 0.5rem;"></i>공부방 비밀번호 입력</h3>
+      </div>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">공부방 입장을 위해 4자리 비밀번호를 입력해주세요.</p>
       
-      <div class="pin-input-container">
-        <input type="password" maxlength="1" class="room-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="room-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="room-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="room-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
+      <div class="pin-display">
+        <div class="pin-dot" id="room-pin-dot-1"></div>
+        <div class="pin-dot" id="room-pin-dot-2"></div>
+        <div class="pin-dot" id="room-pin-dot-3"></div>
+        <div class="pin-dot" id="room-pin-dot-4"></div>
       </div>
       
-      <div style="margin-bottom: 20px;">
-        <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-secondary);">
-          <input type="checkbox" id="remember-device"> 이 기기 기억하기 (다음엔 자동으로 열려요)
-        </label>
-      </div>
-      
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button id="room-pin-submit-btn" class="btn btn-primary">입장하기</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- B. 아이 프로필 선택 모달 오버레이 (첫 진입용) -->
-  <div id="profile-selection-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px; width: 95%;">
-      <div class="modal-title" id="profile-selection-title">🧸 오늘 공부할 사람은 누구인가요?</div>
-      <p class="modal-desc" id="profile-selection-desc">자기 프로필을 터치해 오늘 공부를 확인해 보세요!</p>
-      
-      <div class="profile-selection-container">
-        <div id="profile-list-container" class="profile-list">
-          <!-- JS에서 등록된 아이들의 프로필(이름/아바타) 동적 생성 -->
-        </div>
-      </div>
-      
-      <div class="profile-manage-actions" style="margin-top: 24px; display: flex; justify-content: center; gap: 12px; border-top: 1px solid var(--card-border); padding-top: 16px;">
-        <button id="profile-manage-btn" class="btn btn-secondary" style="font-size: 14px; padding: 8px 16px;">
-          <i class="fa-solid fa-user-gear"></i> 프로필 관리
-        </button>
+      <div class="pin-grid">
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('1')">1</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('2')">2</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('3')">3</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('4')">4</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('5')">5</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('6')">6</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('7')">7</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('8')">8</button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('9')">9</button>
+        <button class="btn btn-secondary pin-key" onclick="clearRoomPin()"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="btn btn-secondary pin-key" onclick="enterRoomPin('0')">0</button>
+        <button class="btn btn-secondary pin-key" onclick="deleteRoomPin()"><i class="fa-solid fa-delete-left"></i></button>
       </div>
     </div>
   </div>
 
-  <!-- C. 최초 진입 자녀 등록 모달 오버레이 (온보딩) -->
-  <div id="onboarding-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 420px; width: 95%;">
-      <div class="modal-title">🎉 환영합니다!</div>
-      <p class="modal-desc">공부방을 시작하기 위해 첫 자녀 프로필을 등록해 주세요.</p>
-      
-      <form id="onboarding-form" style="text-align: left; display: flex; flex-direction: column; gap: 14px;">
-        <div class="form-group">
-          <label class="form-label" for="onboard-name">아이 이름</label>
-          <input type="text" id="onboard-name" class="form-control" placeholder="예: 아름이, 하늘이" required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="onboard-avatar">프로필 캐릭터 선택</label>
-          <select id="onboard-avatar" class="form-control">
-            <option value="🧸">🧸 아기곰</option>
-            <option value="🦕">🦕 아기공룡</option>
-            <option value="🦖">🦖 티라노</option>
-            <option value="🦄">🦄 유니콘</option>
-            <option value="🐱">🐱 야옹이</option>
-            <option value="🐶">🐶 멍멍이</option>
-            <option value="🦊">🦊 여우</option>
-            <option value="🐰">🐰 토끼</option>
-            <option value="🐼">🐼 팬더</option>
-            <option value="🦁">🦁 사자</option>
-            <option value="🐳">🐳 고래</option>
-            <option value="🚀">🚀 우주선</option>
-            <option value="🌟">🌟 별별이</option>
-          </select>
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="button" id="onboard-cancel-btn" class="btn btn-secondary" style="display: none; padding: 12px;">취소</button>
-          <button type="submit" class="btn btn-primary" style="flex: 1; justify-content: center; padding: 12px;">
-            <i class="fa-solid fa-circle-check"></i> 공부방 만들기 시작!
-          </button>
-        </div>
-      </form>
+  <!-- Screen 2: Netflix Style Profiles Screen -->
+  <div id="profiles-screen" class="profiles-screen" style="display: none;">
+    <h2 class="profiles-title"><i class="fa-solid fa-graduation-cap" style="color: var(--primary); margin-right: 0.75rem;"></i>공부방에 누가 들어갈까요?</h2>
+    <div class="profiles-list" id="profiles-list">
+      <!-- Dynamic Profile Cards go here -->
     </div>
-  </div>
-
-  <!-- D. 자녀 프로필 수정 모달 오버레이 (넷플릭스 스타일) -->
-  <div id="edit-profile-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 420px; width: 95%;">
-      <div class="modal-title">✏️ 프로필 수정</div>
-      <p class="modal-desc">자녀의 이름과 캐릭터를 수정하거나 프로필을 삭제합니다.</p>
-      
-      <form id="edit-profile-form" style="text-align: left; display: flex; flex-direction: column; gap: 14px;">
-        <input type="hidden" id="edit-profile-original-name">
-        <div class="form-group">
-          <label class="form-label" for="edit-profile-name">아이 이름</label>
-          <input type="text" id="edit-profile-name" class="form-control" placeholder="예: 아름이, 하늘이" required>
-        </div>
-        
-        <div class="form-group">
-          <label class="form-label" for="edit-profile-avatar">프로필 캐릭터 선택</label>
-          <select id="edit-profile-avatar" class="form-control">
-            <option value="🧸">🧸 아기곰</option>
-            <option value="🦕">🦕 아기공룡</option>
-            <option value="🦖">🦖 티라노</option>
-            <option value="🦄">🦄 유니콘</option>
-            <option value="🐱">🐱 야옹이</option>
-            <option value="🐶">🐶 멍멍이</option>
-            <option value="🦊">🦊 여우</option>
-            <option value="🐰">🐰 토끼</option>
-            <option value="🐼">🐼 팬더</option>
-            <option value="🦁">🦁 사자</option>
-            <option value="🐳">🐳 고래</option>
-            <option value="🚀">🚀 우주선</option>
-            <option value="🌟">🌟 별별이</option>
-          </select>
-        </div>
-        
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-          <button type="button" id="edit-profile-delete-btn" class="btn btn-danger" style="flex: 1; justify-content: center; padding: 12px;">
-            <i class="fa-solid fa-trash-can"></i> 삭제
-          </button>
-          <button type="button" id="edit-profile-cancel-btn" class="btn btn-secondary" style="padding: 12px;">
-            취소
-          </button>
-          <button type="submit" class="btn btn-primary" style="flex: 2; justify-content: center; padding: 12px;">
-            <i class="fa-solid fa-circle-check"></i> 저장
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- E. 부모 인증 확인 모달 오버레이 -->
-  <div id="parent-auth-modal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 380px; width: 95%;">
-      <div class="modal-title">🔐 부모 확인</div>
-      <p class="modal-desc">프로필을 변경하거나 새 자녀를 등록하려면 부모 PIN 번호를 입력해주세요.</p>
-      
-      <div class="pin-input-container">
-        <input type="password" maxlength="1" class="parent-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="parent-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="parent-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-        <input type="password" maxlength="1" class="parent-pin-input pin-dot-input" pattern="[0-9]*" inputmode="numeric">
-      </div>
-      
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button id="parent-auth-cancel-btn" class="btn btn-secondary">취소</button>
-        <button id="parent-auth-submit-btn" class="btn btn-primary">확인</button>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="app-container">
     
-    <!-- 1. 앱 헤더 영역 -->
-    <header class="glass-panel app-header">
-      <div class="logo-section">
-        <h1><i class="fa-solid fa-graduation-cap"></i> 우리아이 공부 스케줄러</h1>
-        <p>매일매일 조금씩 자라나는 우리아이 학습 플래너</p>
+    <div style="margin-top: 4rem; display: flex; justify-content: center; gap: 1rem;">
+      <button class="btn btn-secondary" onclick="openAdminAuthModal()">
+        <i class="fa-solid fa-user-gear"></i> 부모 관리 모드
+      </button>
+      <button class="btn btn-secondary btn-icon" id="theme-toggle-profiles" onclick="toggleTheme()">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 3: Child Main Dashboard (Visible after profile selection) -->
+  <div id="dashboard-screen" class="container" style="display: none;">
+    <header>
+      <div class="brand">
+        <span id="current-child-avatar" style="font-size: 2.2rem; cursor: pointer; transition: transform 0.3s;" onclick="goToProfileSelection()">🧸</span>
+        <div>
+          <h1 id="current-child-name-heading">소은이의 공부방</h1>
+          <p id="current-date-string" style="font-size: 0.85rem; color: var(--text-secondary);">2026년 6월 15일 월요일</p>
+        </div>
       </div>
       
-      <!-- 시간 & 제어 버튼 -->
       <div class="header-controls">
-        <div id="live-clock" style="font-weight: 700; color: var(--text-secondary); font-size: 14px; margin-right: 12px;">
-          <!-- JS에서 동적 갱신 -->
+        <!-- Streak counter -->
+        <div class="streak-box">
+          <i class="fa-solid fa-fire streak-icon"></i>
+          <div>
+            <span class="streak-count" id="streak-days">0</span>일 연속
+          </div>
         </div>
-        <button id="profile-switch-btn" class="btn btn-secondary" title="공부하는 아이 프로필 변경">
-          <i class="fa-solid fa-user-group"></i> 프로필 전환
+        
+        <button class="btn btn-secondary btn-icon" onclick="goToProfileSelection()" title="프로필 선택">
+          <i class="fa-solid fa-user-friends"></i>
         </button>
-        <button id="theme-toggle-btn" class="theme-toggle" title="화면 테마 변경">
+        <button class="btn btn-secondary btn-icon" onclick="openAdminAuthModal()" title="부모 관리 모드">
+          <i class="fa-solid fa-lock-open"></i>
+        </button>
+        <button class="btn btn-secondary btn-icon" id="theme-toggle-dashboard" onclick="toggleTheme()" title="화면 테마 변경">
           <i class="fa-solid fa-moon"></i>
         </button>
-        <a href="admin.html" class="btn btn-secondary">
-          <i class="fa-solid fa-gears"></i> 부모 관리 모드
-        </a>
       </div>
     </header>
 
-    <!-- 2. 대시보드 그리드 영역 -->
     <main class="dashboard-grid">
-      
-      <!-- [왼쪽] 오늘 할 일 리스트 영역 -->
-      <section class="glass-panel" style="display: flex; flex-direction: column; gap: 16px;">
+      <!-- Left side: Today's Tasks & Calendar -->
+      <section style="display: flex; flex-direction: column; gap: 1.5rem;">
         
-        <!-- 환영 배너 (캐릭터 + 칭찬문구) -->
+        <!-- Welcome banner with dynamic quotes -->
         <div class="welcome-banner">
-          <div class="banner-avatar" id="child-avatar">🧸</div>
-          <div class="banner-text">
-            <h2 id="welcome-message">안녕하세요, </h2>
-            <p id="motivational-quote">로딩 중...</p>
+          <div class="welcome-info">
+            <h2 id="welcome-message">안녕, 소은아! 👋</h2>
+            <p id="motivational-quote" class="quote-box">오늘도 멋진 하루를 만들어봐요! ✨</p>
           </div>
         </div>
 
-        <!-- 오늘 달성도 프로그레스 바 -->
-        <div class="progress-card">
-          <div class="progress-header">
-            <span class="progress-title"><i class="fa-solid fa-chart-line"></i> 오늘의 학습 완료율</span>
-            <span class="progress-percentage" id="progress-text">0%</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" id="progress-bar-fill"></div>
-          </div>
-        </div>
-
-        <!-- 데일리 To-Do 목록 -->
-        <div>
-          <h3 class="section-title">
-            <i class="fa-solid fa-clipboard-check" style="color: var(--color-primary);"></i>
-            오늘 공부할 일 리스트
-          </h3>
-          
-          <div id="todo-list-container" class="todo-list">
-            <!-- JS에서 동적으로 공부 목록 렌더링 -->
-            <div class="empty-state">
-              <div class="empty-icon">📂</div>
-              <p>스케줄을 불러오는 중입니다...</p>
+        <!-- Progress Tracker -->
+        <div class="glass-panel dashboard-panel">
+          <div class="progress-container">
+            <div class="progress-header">
+              <span>오늘 공부 달성률</span>
+              <span id="progress-percentage">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="progress-bar-fill" class="progress-bar-fill"></div>
             </div>
           </div>
+          
+          <div style="font-size: 0.9rem; color: var(--text-secondary); text-align: center;" id="progress-text-summary">
+            오늘 할 일 0개 중에 0개를 끝마쳤어요!
+          </div>
         </div>
 
+        <!-- Today's Tasks To-Do List -->
+        <div class="glass-panel dashboard-panel">
+          <h3 class="todo-section-title">
+            <i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> 오늘 완료할 공부 & 할 일
+          </h3>
+          <div class="todo-list" id="todo-list">
+            <!-- Dynamic Daily Tasks go here -->
+          </div>
+        </div>
       </section>
 
-      <!-- [오른쪽] 성취 보드 및 주간 요약 영역 -->
-      <aside class="sidebar-panel">
-        
-        <!-- 연속 달성 스티커보드 -->
-        <div class="glass-panel achievement-card">
-          <h3 class="section-title" style="margin-bottom: 8px;">
-            <i class="fa-solid fa-trophy" style="color: var(--color-warning);"></i> 성취 칭찬 보드
+      <!-- Right side: Weekly Calendar Stamp -->
+      <aside>
+        <div class="glass-panel dashboard-panel" style="height: 100%;">
+          <h3 class="todo-section-title">
+            <i class="fa-solid fa-calendar-week" style="color: var(--secondary);"></i> 이번 주 도장판
           </h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+            하루의 공부를 모두 마치면 멋진 도장을 받아보세요!
+          </p>
           
-          <div class="streak-badge">
-            <div class="streak-icon">🔥</div>
-            <div class="streak-info">
-              <h4>연속 공부 달성</h4>
-              <p id="streak-days">0 일째 이어지는 중!</p>
-            </div>
-          </div>
-          
-          <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; padding: 4px;">
-            <i class="fa-solid fa-quote-left" style="color: var(--color-primary-light);"></i>
-            <span id="streak-encouragement">오늘 공부를 다 완수하면 내일 불꽃이 1개 더 켜져요! 힘내세요!</span>
+          <div class="weekly-calendar" id="weekly-calendar">
+            <!-- Monday to Sunday Stamp grids -->
           </div>
         </div>
-
-        <!-- 주간 간편 달력 -->
-        <div class="glass-panel weekly-summary-card">
-          <h3 class="section-title" style="margin-bottom: 4px;">
-            <i class="fa-solid fa-calendar-week" style="color: var(--color-secondary);"></i> 이번 주 달성 현황
-          </h3>
-          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">요일별 완료 상황을 표시합니다.</p>
-          
-          <div class="weekly-grid" id="weekly-status-grid">
-            <!-- 월~일 요일별 완료 도장 동적 생성 -->
-            <div class="weekly-day-col" id="day-mon">
-              <span class="day-label">월</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-tue">
-              <span class="day-label">화</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-wed">
-              <span class="day-label">수</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-thu">
-              <span class="day-label">목</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-fri">
-              <span class="day-label">금</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-sat">
-              <span class="day-label">토</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-            <div class="weekly-day-col" id="day-sun">
-              <span class="day-label">일</span>
-              <div class="day-status"><i class="fa-solid fa-minus"></i></div>
-            </div>
-          </div>
-        </div>
-
       </aside>
-
     </main>
 
-    <!-- 3. 푸터 영역 -->
-    <footer class="app-footer">
+    <footer>
       <p>&copy; 2026 우리집 학습 플래너. GitHub + Vercel 기반 홈 스케줄 서비스</p>
     </footer>
-
   </div>
 
-  <!-- 커스텀 스크립트 연결 -->
-  <script src="app.js"></script>
+  <!-- Admin Auth PIN Modal (Parent verification) -->
+  <div id="admin-auth-modal" class="modal-backdrop">
+    <div class="modal glass-panel" style="text-align: center;">
+      <div class="modal-header">
+        <h3>부모님 확인 인증</h3>
+        <button class="modal-close" onclick="closeAdminAuthModal()">&times;</button>
+      </div>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">부모님 관리 화면으로 가려면 4자리 암호를 입력해주세요.</p>
+      
+      <div class="pin-display">
+        <div class="pin-dot" id="admin-pin-dot-1"></div>
+        <div class="pin-dot" id="admin-pin-dot-2"></div>
+        <div class="pin-dot" id="admin-pin-dot-3"></div>
+        <div class="pin-dot" id="admin-pin-dot-4"></div>
+      </div>
+      
+      <div class="pin-grid">
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('1')">1</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('2')">2</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('3')">3</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('4')">4</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('5')">5</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('6')">6</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('7')">7</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('8')">8</button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('9')">9</button>
+        <button class="btn btn-secondary pin-key" onclick="clearAdminPin()"><i class="fa-solid fa-rotate-left"></i></button>
+        <button class="btn btn-secondary pin-key" onclick="enterAdminPin('0')">0</button>
+        <button class="btn btn-secondary pin-key" onclick="deleteAdminPin()"><i class="fa-solid fa-delete-left"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <i id="toast-icon" class="fa-solid"></i>
+    <span id="toast-message">메시지 내용</span>
+  </div>
+
+  <!-- App Main Controller Logic -->
+  <script src="/js/app.js"></script>
 </body>
 </html>
