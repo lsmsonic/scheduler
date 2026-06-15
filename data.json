@@ -1,0 +1,343 @@
+{
+  "settings": {
+    "parentPin": "1234",
+    "roomLockEnabled": true,
+    "roomLockPin": "0000",
+    "motivationalQuotes": [
+      "오늘도 멋진 하루를 만들어봐요! ✨",
+      "조금씩 꾸준히 하다 보면 기적이 온답니다! 🚀",
+      "하루가 쌓이면 위대한 소은이가 온다!"
+    ]
+  },
+  "children": {
+    "소은이": {
+      "avatar": "🧸",
+      "weeklySchedule": {
+        "monday": [
+          {
+            "id": "monday_1781143161742_160",
+            "subject": "학교숙제",
+            "target": "받아쓰기 공부",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143195576_570",
+            "subject": "필사",
+            "target": "영어 필사",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143354720_136",
+            "subject": "수학",
+            "target": "연산(기하)",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143601854_876",
+            "subject": "영어",
+            "target": "영어학원 숙제",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143627360_823",
+            "subject": "영어",
+            "target": "워들리와이즈",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143671107_333",
+            "subject": "영어",
+            "target": "문법",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143711867_541",
+            "subject": "국어",
+            "target": "기파랑",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143758140_352",
+            "subject": "국어",
+            "target": "문법 - 초등/중등",
+            "time": ""
+          },
+          {
+            "id": "monday_1781143776786_663",
+            "subject": "한자",
+            "target": "한자",
+            "time": ""
+          }
+        ],
+        "tuesday": [
+          {
+            "id": "tuesday_1781143161742_682",
+            "subject": "학교숙제",
+            "target": "받아쓰기 공부",
+            "time": ""
+          },
+          {
+            "id": "tuesday_1781143373960_885",
+            "subject": "수학",
+            "target": "연산(대수)",
+            "time": ""
+          },
+          {
+            "id": "tuesday_1781143407474_765",
+            "subject": "수학",
+            "target": "매쓰넛&과외",
+            "time": ""
+          },
+          {
+            "id": "tuesday_1781143649960_820",
+            "subject": "영어",
+            "target": "단어시험준비",
+            "time": ""
+          },
+          {
+            "id": "tuesday_1781143711867_809",
+            "subject": "국어",
+            "target": "기파랑",
+            "time": ""
+          }
+        ],
+        "wednesday": [
+          {
+            "id": "wednesday_1781143195576_392",
+            "subject": "필사",
+            "target": "영어 필사",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143238424_130",
+            "subject": "학교숙제",
+            "target": "주제글쓰기",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143354720_574",
+            "subject": "수학",
+            "target": "연산(기하)",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143407474_216",
+            "subject": "수학",
+            "target": "매쓰넛&과외",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143627360_527",
+            "subject": "영어",
+            "target": "워들리와이즈",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143649960_129",
+            "subject": "영어",
+            "target": "단어시험준비",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143711867_768",
+            "subject": "국어",
+            "target": "기파랑",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143776786_729",
+            "subject": "한자",
+            "target": "한자",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143924504_458",
+            "subject": "음악",
+            "target": "플룻 연습 - 10분",
+            "time": ""
+          },
+          {
+            "id": "wednesday_1781143983981_322",
+            "subject": "영재원",
+            "target": "영재원 숙제",
+            "time": ""
+          }
+        ],
+        "thursday": [
+          {
+            "id": "thursday_1781143214824_236",
+            "subject": "필사",
+            "target": "한글 필사",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143260180_303",
+            "subject": "학교숙제",
+            "target": "배움공책",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143373960_525",
+            "subject": "수학",
+            "target": "연산(대수)",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143407474_247",
+            "subject": "수학",
+            "target": "매쓰넛&과외",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143601854_142",
+            "subject": "영어",
+            "target": "영어학원 숙제",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143627360_322",
+            "subject": "영어",
+            "target": "워들리와이즈",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143671107_487",
+            "subject": "영어",
+            "target": "문법",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143726492_208",
+            "subject": "국어",
+            "target": "기파랑 단어",
+            "time": ""
+          },
+          {
+            "id": "thursday_1781143820838_541",
+            "subject": "과학",
+            "target": "과학 문제집",
+            "time": ""
+          }
+        ],
+        "friday": [
+          {
+            "id": "friday_1781143214824_281",
+            "subject": "필사",
+            "target": "한글 필사",
+            "time": ""
+          },
+          {
+            "id": "friday_1781143373960_981",
+            "subject": "수학",
+            "target": "연산(대수)",
+            "time": ""
+          },
+          {
+            "id": "friday_1781143407474_767",
+            "subject": "수학",
+            "target": "매쓰넛&과외",
+            "time": ""
+          },
+          {
+            "id": "friday_1781143627360_172",
+            "subject": "영어",
+            "target": "워들리와이즈",
+            "time": ""
+          },
+          {
+            "id": "friday_1781143739570_47",
+            "subject": "국어",
+            "target": "한끝 국어",
+            "time": ""
+          },
+          {
+            "id": "friday_1781143799449_537",
+            "subject": "한자",
+            "target": "온라인 수업",
+            "time": "21:00"
+          },
+          {
+            "id": "friday_1781143924504_681",
+            "subject": "음악",
+            "target": "플룻 연습 - 10분",
+            "time": ""
+          }
+        ],
+        "saturday": [
+          {
+            "id": "saturday_1781143161742_498",
+            "subject": "학교숙제",
+            "target": "받아쓰기 공부",
+            "time": ""
+          },
+          {
+            "id": "saturday_1781143326338_534",
+            "subject": "일기",
+            "target": "일기쓰기",
+            "time": ""
+          },
+          {
+            "id": "saturday_1781143432522_224",
+            "subject": "수학",
+            "target": "매쓰넛&과외 부족분",
+            "time": "14:00"
+          },
+          {
+            "id": "saturday_1781143924504_79",
+            "subject": "음악",
+            "target": "플룻 연습 - 10분",
+            "time": ""
+          },
+          {
+            "id": "saturday_1781143983981_830",
+            "subject": "영재원",
+            "target": "영재원 숙제",
+            "time": ""
+          }
+        ],
+        "sunday": [
+          {
+            "id": "sunday_1781143161742_842",
+            "subject": "학교숙제",
+            "target": "받아쓰기 공부",
+            "time": ""
+          },
+          {
+            "id": "sunday_1781143283944_976",
+            "subject": "학교숙제",
+            "target": "교과서 읽기",
+            "time": ""
+          },
+          {
+            "id": "sunday_1781143326338_273",
+            "subject": "일기",
+            "target": "일기쓰기",
+            "time": ""
+          },
+          {
+            "id": "sunday_1781143649960_155",
+            "subject": "영어",
+            "target": "단어시험준비",
+            "time": ""
+          },
+          {
+            "id": "sunday_1781143924504_210",
+            "subject": "음악",
+            "target": "플룻 연습 - 10분",
+            "time": ""
+          },
+          {
+            "id": "sunday_1781143983981_519",
+            "subject": "영재원",
+            "target": "영재원 숙제",
+            "time": ""
+          }
+        ]
+      },
+      "history": {
+        "2026-06-11": []
+      }
+    }
+  },
+  "activeChild": "소은이"
+}

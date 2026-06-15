@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>부모 관리 모드 - 우리아이 공부 스케줄러</title>
+  <!-- FontAwesome 아이콘 링크 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- 커스텀 스타일시트 (공용) -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- A. PIN 비밀번호 확인 모달 오버레이 (진입 차단 장치) -->
+  <div id="pin-modal" class="modal-overlay active">
+    <div class="modal-content">
+      <div class="modal-title">🔐 부모 모드 인증</div>
+      <p class="modal-desc">스케줄 변경을 위해 PIN 번호 4자리를 입력해주세요.</p>
+      
+      <div class="pin-input-container">
+        <input type="password" maxlength="1" class="pin-dot-input" pattern="[0-9]*" inputmode="numeric">
+        <input type="password" maxlength="1" class="pin-dot-input" pattern="[0-9]*" inputmode="numeric">
+        <input type="password" maxlength="1" class="pin-dot-input" pattern="[0-9]*" inputmode="numeric">
+        <input type="password" maxlength="1" class="pin-dot-input" pattern="[0-9]*" inputmode="numeric">
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button id="pin-cancel-btn" class="btn btn-secondary">취소</button>
+        <button id="pin-submit-btn" class="btn btn-primary">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. 스케줄 추가/수정 모달 팝업 -->
+  <div id="task-modal" class="modal-overlay">
+    <div class="modal-content task-form-modal-content">
+      <h3 class="modal-title" id="task-modal-title" style="text-align: left; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 20px;">
+        📖 공부 과목 추가
+      </h3>
+      
+      <form id="task-form" class="settings-form" style="text-align: left;">
+        <input type="hidden" id="task-form-day">
+        <input type="hidden" id="task-form-id">
+        
+        <div class="form-group">
+          <label class="form-label" for="form-subject">과목 분류</label>
+          <input type="text" id="form-subject" class="form-control" placeholder="예: 수학, 영어, 독서, 피아노" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="form-target">오늘 할 목표</label>
+          <input type="text" id="form-target" class="form-control" placeholder="예: 디딤돌 3장 풀기, 영어 단어 10개 외우기" required>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="form-time">공부 시간</label>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <input type="time" id="form-time" class="form-control" required>
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-secondary);">
+              <input type="checkbox" id="form-anytime"> 시간 지정 없이 오늘 중 완료 (To-Do)
+            </label>
+          </div>
+        </div>
+
+        <!-- 일괄 추가용 요일 선택박스 (신규 추가 시에만 노출) -->
+        <div class="form-group" id="form-days-group">
+          <label class="form-label">적용할 요일 (여러 요일 선택 시 일괄 추가)</label>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 6px; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--card-border);">
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="monday"> 월</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="tuesday"> 화</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="wednesday"> 수</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="thursday"> 목</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="friday"> 금</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="saturday"> 토</label>
+            <label style="font-size: 13px; cursor:pointer; display: flex; align-items: center; gap: 4px;"><input type="checkbox" name="form-days" value="sunday"> 일</label>
+          </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" id="task-modal-cancel" class="btn btn-secondary">취소</button>
+          <button type="submit" class="btn btn-primary">저장하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- D. 요일 일정 복사 모달 팝업 -->
+  <div id="copy-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 class="modal-title" style="text-align: left; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; margin-bottom: 20px;">
+        📋 하루 일정 복사하기
+      </h3>
+      <p class="modal-desc" style="text-align: left;"><strong id="copy-source-day-name">월요일</strong>의 모든 일정을 선택한 요일로 복사(덮어쓰기)합니다.</p>
+      
+      <form id="copy-form" style="text-align: left; display: flex; flex-direction: column; gap: 16px;">
+        <input type="hidden" id="copy-source-day">
+        
+        <div class="form-group">
+          <label class="form-label">복사할 대상 요일 선택 (중복 선택 가능)</label>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px; border: 1px solid var(--card-border);" id="copy-target-days-grid">
+            <!-- JS에서 복사 소스 요일을 제외한 나머지 요일 체크박스 동적 생성 -->
+          </div>
+        </div>
+        
+        <p style="font-size: 12px; color: var(--color-danger); line-height: 1.4; display: flex; align-items: flex-start; gap: 6px;">
+          <i class="fa-solid fa-triangle-exclamation" style="margin-top: 3px;"></i>
+          <span>선택한 요일에 들어있던 기존 스케줄은 지워지고 복사 대상 일정으로 대체됩니다.</span>
+        </p>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" id="copy-modal-cancel" class="btn btn-secondary">취소</button>
+          <button type="submit" class="btn btn-primary">복사 실행</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- C. 메인 페이지 콘텐츠 -->
+  <div class="app-container">
+    
+    <header class="glass-panel app-header">
+      <div class="logo-section">
+        <h1><i class="fa-solid fa-gears"></i> 부모 관리 대시보드</h1>
+        <p>아이의 주간 스케줄을 계획하고 일일 완료 기록들을 모니터링합니다.</p>
+      </div>
+      
+      <div class="header-controls">
+        <a href="index.html" class="btn btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i> 어린이 공부방으로 가기
+        </a>
+      </div>
+    </header>
+
+    <!-- 탭 내비게이션 메인 판넬 -->
+    <main class="glass-panel" style="flex: 1;">
+      
+      <!-- 탭 버튼 목록 -->
+      <div class="admin-header-tabs">
+        <button class="tab-btn active" data-tab="weekly-schedule-tab">
+          <i class="fa-solid fa-calendar-alt"></i> 주간 스케줄 설정
+        </button>
+        <button class="tab-btn" data-tab="history-log-tab">
+          <i class="fa-solid fa-clock-rotate-left"></i> 학습 히스토리 기록
+        </button>
+        <button class="tab-btn" data-tab="system-settings-tab">
+          <i class="fa-solid fa-user-gear"></i> 스케줄러 환경 설정
+        </button>
+      </div>
+
+      <!-- [탭 1] 주간 스케줄 플래너 영역 -->
+      <div id="weekly-schedule-tab" class="tab-content active">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.02); padding: 12px 18px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border);">
+          <label class="form-label" for="planner-child-select" style="margin-bottom: 0; font-weight: 700; font-size: 14px; white-space: nowrap;"><i class="fa-solid fa-user-graduate"></i> 대상 자녀 선택:</label>
+          <select id="planner-child-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 14px; margin-top: 0;">
+            <!-- JS에서 동적 로드 -->
+          </select>
+        </div>
+        <div class="planner-week-layout" id="weekly-planner-container">
+          <!-- JS에서 각 요일별 스케줄 리스트 카드 렌더링 -->
+        </div>
+      </div>
+
+      <!-- [탭 2] 학습 히스토리 기록 영역 -->
+      <div id="history-log-tab" class="tab-content">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.02); padding: 12px 18px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border);">
+          <label class="form-label" for="history-child-select" style="margin-bottom: 0; font-weight: 700; font-size: 14px; white-space: nowrap;"><i class="fa-solid fa-user-graduate"></i> 대상 자녀 선택:</label>
+          <select id="history-child-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 14px; margin-top: 0;">
+            <!-- JS에서 동적 로드 -->
+          </select>
+        </div>
+        <div class="history-timeline" id="history-timeline-container">
+          <!-- JS에서 날짜별 완료 내역 렌더링 -->
+          <div class="empty-state">
+            <p>기록을 계산하고 있습니다...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- [탭 3] 스케줄러 환경 설정 영역 -->
+      <div id="system-settings-tab" class="tab-content">
+        <div class="settings-form">
+          
+          <h3 class="section-title"><i class="fa-solid fa-user-tag"></i> 관리자 보안 설정</h3>
+          <div class="form-group">
+            <label class="form-label" for="setting-parent-pin">관리자 PIN 번호 (4자리 숫자)</label>
+            <input type="password" id="setting-parent-pin" class="form-control" maxlength="4" placeholder="예: 1234">
+          </div>
+
+          <h3 class="section-title" style="margin-top: 24px;"><i class="fa-solid fa-lock"></i> 공부방 접속 잠금 설정</h3>
+          <div style="background: rgba(0,0,0,0.02); padding: 16px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 12px;">
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">
+              <i class="fa-solid fa-circle-info"></i> 외부 링크 유출 방지를 위해 공부방 최초 접속 시 항상 비밀번호를 확인합니다.
+            </p>
+            <div class="form-group" id="room-lock-pin-group" style="margin-bottom: 0;">
+              <label class="form-label" for="setting-room-lock-pin">공부방 접속 비밀번호 (4자리 숫자)</label>
+              <input type="password" id="setting-room-lock-pin" class="form-control" maxlength="4" placeholder="예: 0000" style="max-width: 150px;">
+            </div>
+          </div>
+
+          <h3 class="section-title" style="margin-top: 28px;"><i class="fa-solid fa-users"></i> 자녀 프로필 관리</h3>
+          <div style="background: rgba(0,0,0,0.02); padding: 16px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border); display: flex; flex-direction: column; gap: 16px;">
+            
+            <!-- 자녀 추가 서브 폼 -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+              <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0;">
+                <label class="form-label" for="new-child-name">자녀 이름</label>
+                <input type="text" id="new-child-name" class="form-control" placeholder="이름 입력" style="padding: 10px 14px;">
+              </div>
+              <div class="form-group" style="width: 100px; margin-bottom: 0;">
+                <label class="form-label" for="new-child-avatar">캐릭터</label>
+                <select id="new-child-avatar" class="form-control" style="padding: 10px 14px;">
+                  <option value="🧸">🧸</option>
+                  <option value="🦕">🦕</option>
+                  <option value="🦖">🦖</option>
+                  <option value="🦄">🦄</option>
+                  <option value="🐱">🐱</option>
+                  <option value="🐶">🐶</option>
+                  <option value="🦊">🦊</option>
+                  <option value="🐰">🐰</option>
+                  <option value="🐼">🐼</option>
+                  <option value="🦁">🦁</option>
+                  <option value="🐸">🐸</option>
+                  <option value="🐳">🐳</option>
+                  <option value="🚀">🚀</option>
+                  <option value="🌟">🌟</option>
+                </select>
+              </div>
+              <button type="button" id="add-child-profile-btn" class="btn btn-secondary" style="padding: 11px 18px;">
+                <i class="fa-solid fa-user-plus"></i> 등록
+              </button>
+            </div>
+            
+            <!-- 자녀 목록 그리드 -->
+            <div style="border-top: 1px solid var(--card-border); padding-top: 12px;">
+              <label class="form-label" style="margin-bottom: 8px;">등록된 자녀 목록 (최소 1명 필수)</label>
+              <div id="children-profiles-list" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- JS에서 동적 프로필 목록 생성 -->
+              </div>
+            </div>
+          </div>
+
+          <h3 class="section-title" style="margin-top: 24px;"><i class="fa-solid fa-wand-magic-sparkles"></i> 오늘의 칭찬 및 동기부여 문구</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">아이의 메인 화면에 매일 무작위로 번갈아가며 노출될 격려 메시지 카드 목록입니다.</p>
+          
+          <div id="quotes-list-editor">
+            <!-- 동적 인풋 입력창 리스트 생성 -->
+          </div>
+          <button id="add-quote-btn" class="btn btn-secondary" style="margin-top: 8px;">
+            <i class="fa-solid fa-plus"></i> 문구 추가하기
+          </button>
+
+          <h3 class="section-title" style="margin-top: 32px; border-top: 1px solid var(--card-border); padding-top: 24px;">
+            <i class="fa-solid fa-floppy-disk"></i> 데이터 백업 및 복원
+          </h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">현재 모든 요일의 일정표와 아이의 공부 수행 기록 전체를 백업하거나 이전 백업본에서 복구할 수 있습니다.</p>
+          
+          <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button id="export-btn" class="btn btn-primary">
+              <i class="fa-solid fa-download"></i> 백업용 JSON 다운로드
+            </button>
+            
+            <label for="import-file" class="btn btn-secondary" style="cursor: pointer;">
+              <i class="fa-solid fa-upload"></i> 백업 JSON 파일 선택
+            </label>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+            <span id="import-filename" style="align-self: center; font-size: 13px; color: var(--text-secondary);"></span>
+          </div>
+
+          <button id="save-settings-btn" class="btn btn-primary" style="margin-top: 40px; align-self: flex-start; padding: 14px 28px; font-size: 16px;">
+            <i class="fa-solid fa-circle-check"></i> 전체 설정 변경 사항 저장
+          </button>
+          
+        </div>
+      </div>
+
+    </main>
+
+    <footer class="app-footer">
+      <p>&copy; 2026 우리집 학습 플래너. GitHub + Vercel 기반 홈 스케줄 서비스</p>
+    </footer>
+
+  </div>
+
+  <!-- 커스텀 어드민 스크립트 연결 -->
+  <script src="admin.js"></script>
+</body>
+</html>

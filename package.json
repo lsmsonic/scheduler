@@ -1,0 +1,16 @@
+{
+  "name": "family-study-scheduler",
+  "version": "1.0.0",
+  "description": "가족 공유형 아이 공부 스케줄러 & To-Do",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "author": "Antigravity",
+  "license": "ISC"
+}
