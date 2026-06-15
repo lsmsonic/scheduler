@@ -49,23 +49,9 @@ async function detectBackend() {
     return;
   }
   
-  // Node.js Express 기본 포트 개발 서버
-  if (window.location.port === '3000') {
-    apiEndpoint = '/api/data';
-    console.log('Detected Environment: Node.js Dev Server');
-    return;
-  }
-
-  // Vercel 배포 도메인인 경우 Vercel Serverless API 연결
-  if (window.location.hostname.endsWith('.vercel.app')) {
-    apiEndpoint = '/api/data';
-    console.log('Detected Environment: Vercel Serverless API');
-    return;
-  }
-  
-  // 시놀로지 NAS Web Station 및 일반 PHP 호스팅 기본값 지정
-  apiEndpoint = 'api.php';
-  console.log('Detected Environment: Synology Web Station (api.php)');
+  // 일반적인 웹 서버 환경 (Express 로컬 서버, Vercel 서버리스, 커스텀 도메인 등)
+  apiEndpoint = '/api/data';
+  console.log('Detected Environment: Web Server API (/api/data)');
 }
 
 /**

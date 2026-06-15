@@ -4,6 +4,14 @@
     {
       "source": "/api/data",
       "destination": "/api/data.js"
+    },
+    {
+      "source": "/scheduler/(.*)",
+      "destination": "/$1"
+    },
+    {
+      "source": "/scheduler",
+      "destination": "/index.html"
     }
   ]
 }

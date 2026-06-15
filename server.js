@@ -14,6 +14,7 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(__dirname));
+app.use('/scheduler', express.static(__dirname));
 
 // GET /api/data — 데이터 조회
 app.get('/api/data', (req, res) => {
@@ -40,6 +41,10 @@ app.post('/api/data', (req, res) => {
 // SPA 폴백
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
+  // 파일 확장자가 있는 요청(예: .css, .js, .png 등)은 index.html을 반환하지 않고 404를 반환하도록 합니다.
+  if (path.extname(req.path)) {
+    return res.status(404).send('Not Found');
+  }
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 

@@ -46,17 +46,8 @@ async function detectBackend() {
     return;
   }
   
-  if (window.location.port === '3000') {
-    apiEndpoint = '/api/data';
-    return;
-  }
-
-  if (window.location.hostname.endsWith('.vercel.app')) {
-    apiEndpoint = '/api/data';
-    return;
-  }
-
-  apiEndpoint = 'api.php';
+  // 일반적인 웹 서버 환경 (Express 로컬 서버, Vercel 서버리스, 커스텀 도메인 등)
+  apiEndpoint = '/api/data';
 }
 
 /**
