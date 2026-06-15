@@ -25,18 +25,20 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // Vercel KV 환경 변수 등록 확인
-  const useKV = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN;
+  // Vercel KV 또는 Upstash Redis 환경 변수 스마트 감지
+  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const useKV = kvUrl && kvToken;
 
   // 1. GET 요청 처리 (데이터 조회)
   if (req.method === 'GET') {
     if (useKV) {
       try {
-        // Vercel KV REST API를 호출하여 데이터 읽기
-        const kvResponse = await fetch(process.env.KV_REST_API_URL, {
+        // Vercel KV/Upstash Redis REST API를 호출하여 데이터 읽기
+        const kvResponse = await fetch(kvUrl, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+            Authorization: `Bearer ${kvToken}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(['GET', 'scheduler_data'])
@@ -51,10 +53,10 @@ module.exports = async (req, res) => {
           const localDataPath = path.join(process.cwd(), 'public', 'data.json');
           const localDataStr = fs.readFileSync(localDataPath, 'utf8');
           
-          await fetch(process.env.KV_REST_API_URL, {
+          await fetch(kvUrl, {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+              Authorization: `Bearer ${kvToken}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(['SET', 'scheduler_data', localDataStr])
@@ -87,11 +89,11 @@ module.exports = async (req, res) => {
 
     if (useKV) {
       try {
-        // Vercel KV REST API를 호출하여 데이터 저장
-        await fetch(process.env.KV_REST_API_URL, {
+        // Vercel KV/Upstash Redis REST API를 호출하여 데이터 저장
+        await fetch(kvUrl, {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+            Authorization: `Bearer ${kvToken}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(['SET', 'scheduler_data', JSON.stringify(updatedData)])
