@@ -6,6 +6,10 @@
       "destination": "/api/data.js"
     },
     {
+      "source": "/api/auth",
+      "destination": "/api/auth.js"
+    },
+    {
       "source": "/scheduler/(.*)",
       "destination": "/$1"
     },

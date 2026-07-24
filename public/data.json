@@ -334,6 +334,73 @@
           }
         ]
       },
+      "scheduleMode": "default",
+      "vacationSchedule": {
+        "monday": [
+          { "id": "vacation_monday_1", "subject": "생활", "target": "아침식사 + 독서", "time": "08:40" },
+          { "id": "vacation_monday_2", "subject": "수학", "target": "5-2 심화 개념 읽기", "time": "09:40" },
+          { "id": "vacation_monday_3", "subject": "수학", "target": "오지은 선생님 수학 (3-2 개념원리 / 2-2 기하 심화 / 5-2 왕수학 심화, 마지막단계+영재원)", "time": "10:00" },
+          { "id": "vacation_monday_4", "subject": "생활", "target": "점심식사 + 독서", "time": "13:00" },
+          { "id": "vacation_monday_5", "subject": "음악", "target": "플룻 연습", "time": "13:40" },
+          { "id": "vacation_monday_6", "subject": "자유시간", "target": "FreeTime", "time": "14:00" },
+          { "id": "vacation_monday_7", "subject": "영어", "target": "영어 과외", "time": "14:40" },
+          { "id": "vacation_monday_8", "subject": "생활", "target": "낮잠", "time": "18:30" },
+          { "id": "vacation_monday_9", "subject": "생활", "target": "저녁식사 + 독서", "time": "19:10" },
+          { "id": "vacation_monday_10", "subject": "숙제", "target": "저녁숙제", "time": "20:10" }
+        ],
+        "tuesday": [
+          { "id": "vacation_tuesday_1", "subject": "생활", "target": "아침식사 + 독서", "time": "08:40" },
+          { "id": "vacation_tuesday_2", "subject": "수학", "target": "5-2 심화 개념 읽기", "time": "09:40" },
+          { "id": "vacation_tuesday_3", "subject": "수학", "target": "오지은 선생님 수학 (3-2 개념원리 / 2-2 기하 심화 / 5-2 왕수학 심화, 마지막단계+영재원)", "time": "10:00" },
+          { "id": "vacation_tuesday_4", "subject": "생활", "target": "점심식사 + 독서", "time": "13:00" },
+          { "id": "vacation_tuesday_5", "subject": "음악", "target": "플룻 연습", "time": "13:40" },
+          { "id": "vacation_tuesday_6", "subject": "자유시간", "target": "FreeTime", "time": "14:00" },
+          { "id": "vacation_tuesday_7", "subject": "운동", "target": "복싱", "time": "14:40" },
+          { "id": "vacation_tuesday_8", "subject": "수학", "target": "매쓰넛", "time": "16:10" },
+          { "id": "vacation_tuesday_9", "subject": "숙제", "target": "저녁숙제 (주중 못한 것 정리)", "time": "22:30" }
+        ],
+        "wednesday": [
+          { "id": "vacation_wednesday_1", "subject": "생활", "target": "아침식사 + 독서", "time": "08:40" },
+          { "id": "vacation_wednesday_2", "subject": "한국사", "target": "한국사 1시간", "time": "09:40" },
+          { "id": "vacation_wednesday_3", "subject": "영어", "target": "영어 챌린지 1시간", "time": "09:40" },
+          { "id": "vacation_wednesday_4", "subject": "사회/과학", "target": "사회·과학 1시간", "time": "09:40" },
+          { "id": "vacation_wednesday_5", "subject": "생활", "target": "점심식사 + 독서", "time": "13:00" },
+          { "id": "vacation_wednesday_6", "subject": "국어", "target": "기파랑", "time": "13:50" },
+          { "id": "vacation_wednesday_7", "subject": "생활", "target": "저녁식사 + 독서", "time": "18:00" },
+          { "id": "vacation_wednesday_8", "subject": "수학", "target": "매쓰넛", "time": "19:00" },
+          { "id": "vacation_wednesday_9", "subject": "숙제", "target": "저녁숙제", "time": "22:30" }
+        ],
+        "thursday": [
+          { "id": "vacation_thursday_1", "subject": "생활", "target": "아침식사 + 독서", "time": "08:40" },
+          { "id": "vacation_thursday_2", "subject": "수학", "target": "5-2 심화 개념 읽기", "time": "09:40" },
+          { "id": "vacation_thursday_3", "subject": "한국사", "target": "한국사 1시간", "time": "10:00" },
+          { "id": "vacation_thursday_4", "subject": "영어", "target": "영어 챌린지 1시간", "time": "10:00" },
+          { "id": "vacation_thursday_5", "subject": "사회/과학", "target": "사회·과학 50분", "time": "10:00" },
+          { "id": "vacation_thursday_6", "subject": "생활", "target": "점심식사 + 독서", "time": "13:00" },
+          { "id": "vacation_thursday_7", "subject": "음악", "target": "플룻 연습", "time": "13:40" },
+          { "id": "vacation_thursday_8", "subject": "자유시간", "target": "FreeTime", "time": "14:00" },
+          { "id": "vacation_thursday_9", "subject": "음악", "target": "플룻", "time": "15:00" },
+          { "id": "vacation_thursday_10", "subject": "생활", "target": "낮잠", "time": "16:00" },
+          { "id": "vacation_thursday_11", "subject": "자유시간", "target": "Free Time", "time": "16:40" },
+          { "id": "vacation_thursday_12", "subject": "수학", "target": "오지은 선생님 수학 (2-2 기하 심화 / 5-2 왕수학 심화, 마지막단계+영재원)", "time": "17:00" },
+          { "id": "vacation_thursday_13", "subject": "생활", "target": "저녁식사 + 독서", "time": "19:00" },
+          { "id": "vacation_thursday_14", "subject": "숙제", "target": "저녁숙제", "time": "20:00" }
+        ],
+        "friday": [
+          { "id": "vacation_friday_1", "subject": "생활", "target": "아침식사 + 독서", "time": "08:40" },
+          { "id": "vacation_friday_2", "subject": "한국사", "target": "한국사 1시간", "time": "09:40" },
+          { "id": "vacation_friday_3", "subject": "영어", "target": "영어 챌린지 1시간", "time": "09:40" },
+          { "id": "vacation_friday_4", "subject": "국어", "target": "기파랑 1시간", "time": "09:40" },
+          { "id": "vacation_friday_5", "subject": "생활", "target": "점심식사 + 독서", "time": "13:00" },
+          { "id": "vacation_friday_6", "subject": "자유시간", "target": "FreeTime", "time": "13:50" },
+          { "id": "vacation_friday_7", "subject": "운동", "target": "수영", "time": "14:20" },
+          { "id": "vacation_friday_8", "subject": "영어", "target": "영어숙제", "time": "14:40" },
+          { "id": "vacation_friday_9", "subject": "생활", "target": "저녁식사 + 독서", "time": "19:00" },
+          { "id": "vacation_friday_10", "subject": "숙제", "target": "저녁숙제", "time": "20:00" }
+        ],
+        "saturday": [],
+        "sunday": []
+      },
       "history": {
         "2026-06-11": []
       }

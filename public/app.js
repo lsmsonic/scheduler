@@ -39,6 +39,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 이벤트 리스너 등록
   document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
   document.getElementById('profile-switch-btn').addEventListener('click', showProfileSelector);
+  document.getElementById('vacation-mode-btn').addEventListener('click', toggleVacationMode);
 });
 
 /**
@@ -104,7 +105,7 @@ async function saveData() {
     saveDataLocal();
     return true;
   }
-  
+
   try {
     const response = await fetch(apiEndpoint, {
       method: 'POST',
@@ -113,7 +114,14 @@ async function saveData() {
       },
       body: JSON.stringify(appData)
     });
-    
+
+    if (response.status === 401) {
+      const result = await response.json().catch(() => ({}));
+      alert(result.error || '인증이 만료되었습니다. 다시 인증한 뒤 시도해주세요.');
+      showLockScreen();
+      return false;
+    }
+
     const result = await response.json();
     if (result.success) {
       saveDataLocal();
@@ -131,6 +139,37 @@ async function saveData() {
 
 function saveDataLocal() {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appData));
+}
+
+/**
+ * 3-B. 서버사이드 PIN 검증 호출 (/api/auth)
+ * 반환값: true(성공) / false(명시적 실패) / null(엔드포인트 없음·네트워크 오류 → 호출자가 레거시 비교로 폴백)
+ */
+async function verifyPinWithServer(type, pin) {
+  if (apiEndpoint === 'local') {
+    return null;
+  }
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, pin })
+    });
+
+    if (response.status === 404) {
+      // /api/auth가 없는 구형 배포(Synology Express 서버 등) → 레거시 비교로 폴백
+      return null;
+    }
+    if (response.status === 423) {
+      const result = await response.json().catch(() => ({}));
+      alert(result.error || 'PIN을 너무 많이 잘못 입력했습니다. 잠시 후 다시 시도해주세요.');
+      return false;
+    }
+    return response.ok;
+  } catch (err) {
+    console.warn('/api/auth 호출 실패, 레거시 비교로 폴백합니다.', err);
+    return null;
+  }
 }
 
 /**
@@ -188,8 +227,40 @@ function migrateDataSchema() {
       }
     }
   }
-  
+
+  // 5) 방학 스케줄 및 스케줄 모드 필드 추가 검증
+  if (appData.children) {
+    for (const name in appData.children) {
+      const child = appData.children[name];
+      if (!child.vacationSchedule) {
+        child.vacationSchedule = {
+          monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
+        };
+        migrated = true;
+      }
+      if (!child.scheduleMode) {
+        child.scheduleMode = 'default';
+        migrated = true;
+      }
+    }
+  }
+
   return migrated;
+}
+
+/**
+ * 4-B. 자녀의 현재 활성 스케줄(학기 중/방학) 반환
+ */
+function getActiveSchedule(childData) {
+  if (childData.scheduleMode === 'vacation') {
+    if (!childData.vacationSchedule) {
+      childData.vacationSchedule = {
+        monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
+      };
+    }
+    return childData.vacationSchedule;
+  }
+  return childData.weeklySchedule;
 }
 
 // 프로필 관리 기능용 글로벌 변수
@@ -248,17 +319,25 @@ function showLockScreen() {
   };
   window.addEventListener('keypress', inputEnterHandler);
   
-  function verifyRoomPin() {
+  async function verifyRoomPin() {
     if (!appData) {
       alert('데이터가 아직 로드되지 않았습니다. 페이지를 새로고침 해주세요.');
       return;
     }
     const enteredPin = Array.from(inputs).map(i => i.value).join('');
-    const targetPin = (appData.settings && appData.settings.roomLockPin) ? appData.settings.roomLockPin : '0000';
-    const parentPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
-    
-    // 설정된 공부방 핀, 부모 마스터 핀, 기본값(0000, 1234) 중 하나라도 일치하면 해제
-    if (enteredPin === targetPin || enteredPin === parentPin || enteredPin === '0000' || enteredPin === '1234') {
+
+    const serverResult = await verifyPinWithServer('room', enteredPin);
+    let unlocked;
+    if (serverResult === null) {
+      // 레거시 폴백 (서버 인증 엔드포인트가 없는 배포 환경 한정): 설정된 공부방 핀 또는 부모 마스터 핀과 비교
+      const targetPin = (appData.settings && appData.settings.roomLockPin) ? appData.settings.roomLockPin : '0000';
+      const parentPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
+      unlocked = enteredPin === targetPin || enteredPin === parentPin;
+    } else {
+      unlocked = serverResult;
+    }
+
+    if (unlocked) {
       modal.classList.remove('active');
       window.removeEventListener('keypress', inputEnterHandler);
       
@@ -506,11 +585,20 @@ function showParentAuthModal(successCallback) {
   };
   window.addEventListener('keypress', authEnterHandler);
   
-  function verifyParentPin() {
+  async function verifyParentPin() {
     const enteredPin = Array.from(inputs).map(i => i.value).join('');
-    const targetPin = appData.settings.parentPin || '1234';
-    
-    if (enteredPin === targetPin) {
+
+    const serverResult = await verifyPinWithServer('parent', enteredPin);
+    let ok;
+    if (serverResult === null) {
+      // 레거시 폴백 (서버 인증 엔드포인트가 없는 배포 환경 한정)
+      const targetPin = appData.settings.parentPin || '1234';
+      ok = enteredPin === targetPin;
+    } else {
+      ok = serverResult;
+    }
+
+    if (ok) {
       modal.classList.remove('active');
       window.removeEventListener('keypress', authEnterHandler);
       if (parentAuthSuccessCallback) {
@@ -679,7 +767,8 @@ function renderDashboard() {
   }
 
   // 3) 오늘 과목 스케줄 가공 & To-Do 리스트 렌더링
-  const rawTodaySchedule = childData.weeklySchedule[todayDayNameEng] || [];
+  const activeSchedule = getActiveSchedule(childData);
+  const rawTodaySchedule = activeSchedule[todayDayNameEng] || [];
   const todayHistory = childData.history[todayDateStr] || [];
   const postponedTasks = childData.postponedTasks || [];
   
@@ -842,12 +931,41 @@ function renderDashboard() {
   
   // 4) 달성률 바 갱신
   updateProgressBar(todaySchedule, todayHistory);
-  
+
   // 5) 달성 도장 그리드 생성
   renderWeeklyStatusGrid();
 
   // 6) 연속 공부 일수 칭찬 보드 갱신
   renderStreakBoard();
+
+  // 7) 방학 모드 버튼 상태 갱신
+  updateVacationModeButton();
+}
+
+/**
+ * 7-B. 방학 모드 토글 (부모 인증 필요)
+ */
+function toggleVacationMode() {
+  if (!appData || !activeChild || !appData.children[activeChild]) return;
+
+  showParentAuthModal(async () => {
+    const childData = appData.children[activeChild];
+    childData.scheduleMode = childData.scheduleMode === 'vacation' ? 'default' : 'vacation';
+    await saveData();
+    renderDashboard();
+  });
+}
+
+function updateVacationModeButton() {
+  const btn = document.getElementById('vacation-mode-btn');
+  if (!btn || !appData || !activeChild || !appData.children[activeChild]) return;
+
+  const isVacation = appData.children[activeChild].scheduleMode === 'vacation';
+  btn.innerHTML = isVacation
+    ? '<i class="fa-solid fa-umbrella-beach"></i> 방학 모드 (ON)'
+    : '<i class="fa-solid fa-umbrella-beach"></i> 방학 모드';
+  btn.classList.toggle('btn-primary', isVacation);
+  btn.classList.toggle('btn-secondary', !isVacation);
 }
 
 /**
@@ -951,18 +1069,19 @@ function renderStreakBoard() {
   const todayDateStr = getFormattedDate(now);
   const childData = appData.children[activeChild];
   
+  const activeSchedule = getActiveSchedule(childData);
   const todayDayNameEng = DAY_MAP_ENG[now.getDay()];
-  const todaySchedule = childData.weeklySchedule[todayDayNameEng] || [];
+  const todaySchedule = activeSchedule[todayDayNameEng] || [];
   const todayHistory = childData.history[todayDateStr] || [];
   const isTodayDone = todaySchedule.length > 0 && todaySchedule.every(task => todayHistory.some(h => h.id === task.id));
-  
+
   let checkDate = new Date(now);
   checkDate.setDate(checkDate.getDate() - 1);
-  
+
   while (true) {
     const checkDateStr = getFormattedDate(checkDate);
     const dayOfWeekEng = DAY_MAP_ENG[checkDate.getDay()];
-    const scheduledTasks = childData.weeklySchedule[dayOfWeekEng] || [];
+    const scheduledTasks = activeSchedule[dayOfWeekEng] || [];
     const completedHistory = childData.history[checkDateStr] || [];
     
     // 태스크가 없는 날은 연속 기록을 끊지 않고 다음 날로 토스
@@ -1007,20 +1126,21 @@ function renderStreakBoard() {
 function renderWeeklyStatusGrid() {
   const now = new Date();
   const childData = appData.children[activeChild];
-  
+  const activeSchedule = getActiveSchedule(childData);
+
   const currentDay = now.getDay();
   const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
   const monday = new Date(now);
   monday.setDate(now.getDate() + diffToMonday);
-  
+
   for (let i = 0; i < 7; i++) {
     const targetDate = new Date(monday);
     targetDate.setDate(monday.getDate() + i);
-    
+
     const targetDateStr = getFormattedDate(targetDate);
     const dayOfWeekEng = DAY_MAP_ENG[targetDate.getDay()];
-    
-    const scheduledTasks = childData.weeklySchedule[dayOfWeekEng] || [];
+
+    const scheduledTasks = activeSchedule[dayOfWeekEng] || [];
     const completedHistory = childData.history[targetDateStr] || [];
     
     const dayColId = `day-${dayOfWeekEng.substring(0, 3)}`;

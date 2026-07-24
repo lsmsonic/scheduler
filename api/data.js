@@ -1,118 +1,90 @@
 /**
  * Vercel Serverless Function (Node.js)
- * 경로: /api/data.js
- * 
+ * 경로: /api/data
+ *
  * Vercel 환경에서는 Vercel KV(무료 Redis)를 연결하여 데이터를 공유하고 저장합니다.
  * 로컬 개발 환경(Vercel CLI)이나 KV가 연결되지 않은 경우 자동으로 로컬 data.json 파일 쓰기로 폴백(Fallback)합니다.
+ *
+ * 보안: PIN(부모/공부방)은 절대 이 응답에 담기지 않는다(redactPins). PIN 검증은 /api/auth 에서
+ * 서버사이드로만 수행한다. 쓰기(POST)는 최소 공부방 인증(room)을 요구하며, 설정/자녀 목록처럼
+ * 민감한 변경은 부모 인증(parent)을 추가로 요구한다.
  */
+const {
+  isAuthed,
+  readCurrentData,
+  writeCurrentData,
+  migratePinHashes,
+  redactPins
+} = require('./_lib');
 
-const fs = require('fs');
-const path = require('path');
+// settings 안에서 "PIN 변경 시도" 또는 실제로 눈에 보이는 값 변경이 있었는지만 판단한다.
+// (client는 GET 응답에서 PIN/해시 필드를 받은 적이 없으므로, 그 필드의 유무만으로 diff하면 항상 달라 보이게 됨)
+function settingsChangeRequiresParentAuth(currentSettings, updatedSettings) {
+  const cur = currentSettings || {};
+  const upd = updatedSettings || {};
+
+  if (upd.parentPin || upd.roomLockPin) return true; // 새 PIN 입력 시도
+  if (JSON.stringify(upd.motivationalQuotes || []) !== JSON.stringify(cur.motivationalQuotes || [])) return true;
+  if (Boolean(upd.roomLockEnabled) !== Boolean(cur.roomLockEnabled)) return true;
+
+  return false;
+}
 
 module.exports = async (req, res) => {
-  // CORS 헤더 설정 (가족 구성원들이 다양한 기기에서 접근할 수 있도록 개방)
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  // 프론트엔드와 API가 동일한 Vercel 도메인에서 서빙되므로 별도 CORS 허용이 필요 없음(same-origin).
 
-  // OPTIONS 프리플라이트 요청 대응
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  // Vercel KV 또는 Upstash Redis 환경 변수 스마트 감지
-  const kvUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const kvToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  const useKV = kvUrl && kvToken;
-
-  // 1. GET 요청 처리 (데이터 조회)
   if (req.method === 'GET') {
-    if (useKV) {
-      try {
-        // Vercel KV/Upstash Redis REST API를 호출하여 데이터 읽기
-        const kvResponse = await fetch(kvUrl, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${kvToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(['GET', 'scheduler_data'])
-        });
-        const kvResult = await kvResponse.json();
-        
-        if (kvResult.result) {
-          // 데이터가 존재하면 반환
-          return res.status(200).json(JSON.parse(kvResult.result));
-        } else {
-          // 최초 실행 시 키가 없는 경우: 로컬 data.json의 기본 구조를 읽어 디비 초기 세팅(Seeding)
-          const localDataPath = path.join(process.cwd(), 'public', 'data.json');
-          const localDataStr = fs.readFileSync(localDataPath, 'utf8');
-          
-          await fetch(kvUrl, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${kvToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(['SET', 'scheduler_data', localDataStr])
-          });
-          
-          return res.status(200).json(JSON.parse(localDataStr));
-        }
-      } catch (err) {
-        console.error('KV Database 읽기 오류:', err);
-        return res.status(500).json({ error: 'KV 데이터베이스에서 값을 가져올 수 없습니다.' });
+    try {
+      const data = await readCurrentData();
+      if (migratePinHashes(data)) {
+        await writeCurrentData(data);
       }
-    } else {
-      // 로컬 개발/파일 시스템 폴백 (data.json 조회)
-      try {
-        const localDataPath = path.join(process.cwd(), 'public', 'data.json');
-        const localData = fs.readFileSync(localDataPath, 'utf8');
-        return res.status(200).json(JSON.parse(localData));
-      } catch (err) {
-        return res.status(500).json({ error: '로컬 data.json 파일을 조회할 수 없습니다.' });
-      }
+      return res.status(200).json(redactPins(data));
+    } catch (err) {
+      console.error('데이터 조회 오류:', err);
+      return res.status(500).json({ error: '데이터를 가져올 수 없습니다.' });
     }
   }
 
-  // 2. POST 요청 처리 (데이터 업데이트)
   if (req.method === 'POST') {
+    if (!isAuthed(req, 'room')) {
+      return res.status(401).json({ error: '인증이 필요합니다. 공부방 비밀번호를 다시 확인해주세요.' });
+    }
+
     const updatedData = req.body;
     if (!updatedData) {
       return res.status(400).json({ error: '요청 바디가 비어있습니다.' });
     }
 
-    if (useKV) {
-      try {
-        // Vercel KV/Upstash Redis REST API를 호출하여 데이터 저장
-        await fetch(kvUrl, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${kvToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(['SET', 'scheduler_data', JSON.stringify(updatedData)])
-        });
-        
-        return res.status(200).json({ success: true, message: 'Vercel KV 데이터베이스에 성공적으로 동기화되었습니다.' });
-      } catch (err) {
-        console.error('KV Database 쓰기 에러:', err);
-        return res.status(500).json({ error: 'KV 데이터베이스에 저장하지 못했습니다.' });
+    try {
+      const current = await readCurrentData();
+
+      const currentChildKeys = Object.keys(current.children || {}).sort().join(',');
+      const newChildKeys = Object.keys(updatedData.children || {}).sort().join(',');
+      const childrenChanged = currentChildKeys !== newChildKeys;
+      const settingsChanged = settingsChangeRequiresParentAuth(current.settings, updatedData.settings);
+
+      if ((settingsChanged || childrenChanged) && !isAuthed(req, 'parent')) {
+        return res.status(401).json({ error: '이 변경 사항은 부모 인증이 필요합니다.' });
       }
-    } else {
-      // 로컬 개발/파일 시스템 폴백 (data.json 쓰기)
-      try {
-        const localDataPath = path.join(process.cwd(), 'public', 'data.json');
-        fs.writeFileSync(localDataPath, JSON.stringify(updatedData, null, 2), 'utf8');
-        return res.status(200).json({ success: true, message: '로컬 data.json 파일에 성공적으로 저장되었습니다.' });
-      } catch (err) {
-        return res.status(500).json({ error: '로컬 data.json 파일 수정에 실패했습니다.' });
+
+      // 클라이언트가 새 평문 PIN을 보냈으면 해시로 변환하고, 그렇지 않으면 기존 해시를 보존한다.
+      // (클라이언트는 GET 응답에서 해시를 받아본 적이 없어 updatedData.settings에는 해시가 없음)
+      migratePinHashes(updatedData);
+      if (updatedData.settings && current.settings) {
+        if (!updatedData.settings.parentPinHash && current.settings.parentPinHash) {
+          updatedData.settings.parentPinHash = current.settings.parentPinHash;
+        }
+        if (!updatedData.settings.roomLockPinHash && current.settings.roomLockPinHash) {
+          updatedData.settings.roomLockPinHash = current.settings.roomLockPinHash;
+        }
       }
+
+      await writeCurrentData(updatedData);
+      return res.status(200).json({ success: true, message: '데이터가 정상적으로 저장되었습니다.' });
+    } catch (err) {
+      console.error('데이터 저장 오류:', err);
+      return res.status(500).json({ error: '데이터를 저장하지 못했습니다.' });
     }
   }
 

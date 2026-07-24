@@ -103,7 +103,14 @@ async function saveData() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(appData)
     });
-    
+
+    if (response.status === 401) {
+      const result = await response.json().catch(() => ({}));
+      alert(result.error || '인증이 만료되었습니다. 새로고침 후 PIN을 다시 입력해주세요.');
+      window.location.reload();
+      return false;
+    }
+
     const result = await response.json();
     if (result.success) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appData));
@@ -116,6 +123,36 @@ async function saveData() {
     console.error('서버 동기화 실패. 로컬 캐시에 보관합니다.', err);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(appData));
     return true;
+  }
+}
+
+/**
+ * 3-B. 서버사이드 PIN 검증 호출 (/api/auth) — app.js와 동일 로직
+ * 반환값: true(성공) / false(명시적 실패) / null(엔드포인트 없음·네트워크 오류 → 레거시 비교로 폴백)
+ */
+async function verifyPinWithServer(type, pin) {
+  if (apiEndpoint === 'local') {
+    return null;
+  }
+  try {
+    const response = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, pin })
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+    if (response.status === 423) {
+      const result = await response.json().catch(() => ({}));
+      alert(result.error || 'PIN을 너무 많이 잘못 입력했습니다. 잠시 후 다시 시도해주세요.');
+      return false;
+    }
+    return response.ok;
+  } catch (err) {
+    console.warn('/api/auth 호출 실패, 레거시 비교로 폴백합니다.', err);
+    return null;
   }
 }
 
@@ -151,15 +188,45 @@ function migrateDataSchema() {
     };
     
     appData.activeChild = oldName;
-    
+
     delete appData.weeklySchedule;
     delete appData.history;
     delete appData.settings.childName;
-    
+
     migrated = true;
   }
-  
+
+  // 방학 스케줄 및 스케줄 모드 필드 추가 검증
+  if (appData.children) {
+    for (const name in appData.children) {
+      const child = appData.children[name];
+      if (!child.vacationSchedule) {
+        child.vacationSchedule = {
+          monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
+        };
+        migrated = true;
+      }
+      if (!child.scheduleMode) {
+        child.scheduleMode = 'default';
+        migrated = true;
+      }
+    }
+  }
+
   return migrated;
+}
+
+/** 자녀의 현재 활성 스케줄(학기 중/방학) 반환 — app.js와 동일 로직 */
+function getActiveSchedule(childData) {
+  if (childData.scheduleMode === 'vacation') {
+    if (!childData.vacationSchedule) {
+      childData.vacationSchedule = {
+        monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
+      };
+    }
+    return childData.vacationSchedule;
+  }
+  return childData.weeklySchedule;
 }
 
 /**
@@ -205,25 +272,36 @@ function setupPinVerification() {
     }
   });
 
-  function verifyPin() {
+  async function verifyPin() {
     if (!appData) {
       alert('데이터가 아직 로드되지 않았습니다. 페이지를 새로고침 하거나 서버 상태를 확인해주세요.');
       return;
     }
     const enteredPin = Array.from(inputs).map(input => input.value).join('');
-    const targetPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
-    
-    if (enteredPin === targetPin) {
+
+    const serverResult = await verifyPinWithServer('parent', enteredPin);
+    let ok;
+    if (serverResult === null) {
+      // 레거시 폴백 (서버 인증 엔드포인트가 없는 배포 환경 한정)
+      const targetPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
+      ok = enteredPin === targetPin;
+    } else {
+      ok = serverResult;
+    }
+
+    if (ok) {
       modal.classList.remove('active');
-      
+
       // 초기 아동 기본값 셋업
       const childrenNames = Object.keys(appData.children || {});
       currentSelectedChildPlanner = childrenNames[0] || '';
       currentSelectedChildHistory = childrenNames[0] || '';
-      
+
       // 드롭다운 셀렉트 박스들 채우기
       updateChildSelectDropdowns();
-      
+      setupPlannerModeToggle();
+      updatePlannerModeButtons();
+
       renderWeeklyPlanner();
       renderHistoryLogs();
     } else {
@@ -273,6 +351,7 @@ function updateChildSelectDropdowns() {
   // 드롭다운 변경 감지 이벤트 설정
   plannerSelect.onchange = () => {
     currentSelectedChildPlanner = plannerSelect.value;
+    updatePlannerModeButtons();
     renderWeeklyPlanner();
   };
   
@@ -306,6 +385,42 @@ function setupTabSystem() {
 }
 
 /**
+ * 6-B. 학기 중/방학 스케줄 편집 대상 전환 버튼
+ * childData.scheduleMode를 직접 전환하므로, 여기서 바꾸면 어린이 대시보드에도 즉시 반영된다.
+ */
+function setupPlannerModeToggle() {
+  const defaultBtn = document.getElementById('planner-mode-default-btn');
+  const vacationBtn = document.getElementById('planner-mode-vacation-btn');
+  if (!defaultBtn || !vacationBtn || defaultBtn.dataset.bound) return;
+
+  defaultBtn.dataset.bound = 'true';
+  [defaultBtn, vacationBtn].forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const childData = appData.children[currentSelectedChildPlanner];
+      if (!childData) return;
+      childData.scheduleMode = btn.dataset.mode;
+      updatePlannerModeButtons();
+      renderWeeklyPlanner();
+      await saveData();
+    });
+  });
+}
+
+function updatePlannerModeButtons() {
+  const defaultBtn = document.getElementById('planner-mode-default-btn');
+  const vacationBtn = document.getElementById('planner-mode-vacation-btn');
+  if (!defaultBtn || !vacationBtn) return;
+
+  const childData = appData.children[currentSelectedChildPlanner];
+  const isVacation = childData && childData.scheduleMode === 'vacation';
+
+  defaultBtn.classList.toggle('btn-primary', !isVacation);
+  defaultBtn.classList.toggle('btn-secondary', isVacation);
+  vacationBtn.classList.toggle('btn-primary', !!isVacation);
+  vacationBtn.classList.toggle('btn-secondary', !isVacation);
+}
+
+/**
  * 7. 주간 스케줄 플래너 렌더링 (자녀 이름 기준)
  */
 function renderWeeklyPlanner() {
@@ -322,10 +437,12 @@ function renderWeeklyPlanner() {
   }
 
   const childData = appData.children[currentSelectedChildPlanner];
-  
+  const activeSchedule = getActiveSchedule(childData);
+  updatePlannerModeButtons();
+
   DAY_MAP_ENG.forEach((dayEng, idx) => {
     const dayKor = DAY_MAP_KOR[idx];
-    const tasks = childData.weeklySchedule[dayEng] || [];
+    const tasks = activeSchedule[dayEng] || [];
     
     const dayCard = document.createElement('div');
     dayCard.className = 'planner-day-card';
@@ -415,7 +532,7 @@ function bindPlannerEvents() {
       const day = btn.dataset.day;
       const taskId = btn.dataset.id;
       const childData = appData.children[currentSelectedChildPlanner];
-      const task = childData.weeklySchedule[day].find(t => t.id === taskId);
+      const task = getActiveSchedule(childData)[day].find(t => t.id === taskId);
       if (task) {
         openTaskModal(day, task);
       }
@@ -428,10 +545,11 @@ function bindPlannerEvents() {
       const day = btn.dataset.day;
       const taskId = btn.dataset.id;
       const childData = appData.children[currentSelectedChildPlanner];
-      const task = childData.weeklySchedule[day].find(t => t.id === taskId);
-      
+      const activeSchedule = getActiveSchedule(childData);
+      const task = activeSchedule[day].find(t => t.id === taskId);
+
       if (confirm(`'${task.subject} - ${task.target}' 과목을 스케줄에서 완전히 삭제하시겠습니까?`)) {
-        childData.weeklySchedule[day] = childData.weeklySchedule[day].filter(t => t.id !== taskId);
+        activeSchedule[day] = activeSchedule[day].filter(t => t.id !== taskId);
         await saveData();
         renderWeeklyPlanner();
       }
@@ -522,29 +640,30 @@ taskForm.addEventListener('submit', async (e) => {
   const time = isAnytime ? "" : document.getElementById('form-time').value;
   
   const childData = appData.children[currentSelectedChildPlanner];
-  
+  const activeSchedule = getActiveSchedule(childData);
+
   if (taskId) {
     // 1) 수정 처리
-    if (!childData.weeklySchedule[day]) childData.weeklySchedule[day] = [];
-    const taskIdx = childData.weeklySchedule[day].findIndex(t => t.id === taskId);
+    if (!activeSchedule[day]) activeSchedule[day] = [];
+    const taskIdx = activeSchedule[day].findIndex(t => t.id === taskId);
     if (taskIdx > -1) {
-      childData.weeklySchedule[day][taskIdx] = { id: taskId, subject, target, time };
+      activeSchedule[day][taskIdx] = { id: taskId, subject, target, time };
     }
   } else {
     // 2) 신규 추가 처리 (다중 요일 일괄 추가)
     const selectedDays = Array.from(document.querySelectorAll('input[name="form-days"]:checked')).map(cb => cb.value);
-    
+
     if (selectedDays.length === 0) {
       alert('적용할 요일을 최소 하나 이상 선택해 주세요.');
       return;
     }
-    
+
     selectedDays.forEach(d => {
-      if (!childData.weeklySchedule[d]) {
-        childData.weeklySchedule[d] = [];
+      if (!activeSchedule[d]) {
+        activeSchedule[d] = [];
       }
       const newId = `${d}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      childData.weeklySchedule[d].push({ id: newId, subject, target, time });
+      activeSchedule[d].push({ id: newId, subject, target, time });
     });
   }
   
@@ -635,12 +754,11 @@ function setupSettingsForm() {
   const addProfileBtn = document.getElementById('add-child-profile-btn');
   const roomLockPinGroup = document.getElementById('room-lock-pin-group');
   
-  // 1) 기본 설정 및 비밀번호 바인딩
-  document.getElementById('setting-parent-pin').value = appData.settings.parentPin || '1234';
-  
-  // 공부방 진입 비밀번호 세팅
-  document.getElementById('setting-room-lock-pin').value = appData.settings.roomLockPin || '0000';
-  
+  // 1) PIN 입력란은 서버가 원문/해시를 절대 내려주지 않으므로 항상 빈칸으로 시작한다.
+  //    (비워두고 저장하면 기존 PIN이 그대로 유지되고, 입력하면 새 PIN으로 교체된다)
+  document.getElementById('setting-parent-pin').value = '';
+  document.getElementById('setting-room-lock-pin').value = '';
+
   // 접속 비밀번호 영역은 항시 노출
   roomLockPinGroup.style.display = 'block';
   
@@ -728,18 +846,19 @@ function setupSettingsForm() {
   
   // 5) 전체 설정 변경 저장
   saveBtn.addEventListener('click', async () => {
+    // PIN 입력란은 선택 사항: 비워두면 기존 PIN을 그대로 유지하고, 입력하면 4자리 숫자여야 새 PIN으로 교체된다.
     const parentPin = document.getElementById('setting-parent-pin').value.trim();
     const roomLockPin = document.getElementById('setting-room-lock-pin').value.trim();
-    
-    if (parentPin.length !== 4 || isNaN(parentPin)) {
+
+    if (parentPin && (parentPin.length !== 4 || isNaN(parentPin))) {
       alert('관리자 PIN 번호는 4자리 숫자여야 합니다.');
       return;
     }
-    if (roomLockPin.length !== 4 || isNaN(roomLockPin)) {
+    if (roomLockPin && (roomLockPin.length !== 4 || isNaN(roomLockPin))) {
       alert('공부방 접속 비밀번호는 4자리 숫자여야 합니다.');
       return;
     }
-    
+
     const childrenNames = Object.keys(appData.children || {});
     if (childrenNames.length === 0) {
       alert('최소 한 명 이상의 자녀 프로필이 등록되어 있어야 합니다.');
@@ -756,13 +875,21 @@ function setupSettingsForm() {
       return;
     }
     
-    // 데이터 쓰기
-    appData.settings.parentPin = parentPin;
+    // 데이터 쓰기 — PIN은 입력했을 때만 교체 요청(서버가 해시로 변환), 비워두면 기존 PIN 유지
+    if (parentPin) appData.settings.parentPin = parentPin;
+    if (roomLockPin) appData.settings.roomLockPin = roomLockPin;
     appData.settings.roomLockEnabled = true; // 항상 접속 잠금 강제 사용
-    appData.settings.roomLockPin = roomLockPin;
     appData.settings.motivationalQuotes = newQuotes;
     
     const isSaved = await saveData();
+
+    // 평문 PIN이 로컬 캐시(localStorage)나 메모리에 남지 않도록 즉시 제거한다.
+    // (서버가 저장 시점에 해시로 변환하며, 클라이언트는 평문을 계속 들고 있을 필요가 없음)
+    delete appData.settings.parentPin;
+    delete appData.settings.roomLockPin;
+    document.getElementById('setting-parent-pin').value = '';
+    document.getElementById('setting-room-lock-pin').value = '';
+
     if (isSaved) {
       alert('설정 정보가 정상적으로 동기화되었습니다!');
       renderQuotesEditor();
@@ -1028,10 +1155,11 @@ function setupCopyModal() {
     
     if (confirm(`정말로 '${sourceDayKor}'의 모든 일정을 [${targetDaysKor}]에 덮어씌우시겠습니까?`)) {
       const childData = appData.children[currentSelectedChildPlanner];
-      const sourceTasks = childData.weeklySchedule[sourceDay] || [];
-      
+      const activeSchedule = getActiveSchedule(childData);
+      const sourceTasks = activeSchedule[sourceDay] || [];
+
       targetDays.forEach(targetDay => {
-        childData.weeklySchedule[targetDay] = sourceTasks.map(t => ({
+        activeSchedule[targetDay] = sourceTasks.map(t => ({
           id: `${targetDay}_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
           subject: t.subject,
           target: t.target,
