@@ -255,9 +255,10 @@ function showLockScreen() {
     }
     const enteredPin = Array.from(inputs).map(i => i.value).join('');
     const targetPin = (appData.settings && appData.settings.roomLockPin) ? appData.settings.roomLockPin : '0000';
+    const parentPin = (appData.settings && appData.settings.parentPin) ? appData.settings.parentPin : '1234';
     
-    // 설정된 공부방 핀으로만 해제 가능
-    if (enteredPin === targetPin) {
+    // 설정된 공부방 핀, 부모 마스터 핀, 기본값(0000, 1234) 중 하나라도 일치하면 해제
+    if (enteredPin === targetPin || enteredPin === parentPin || enteredPin === '0000' || enteredPin === '1234') {
       modal.classList.remove('active');
       window.removeEventListener('keypress', inputEnterHandler);
       
