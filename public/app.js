@@ -245,7 +245,97 @@ function migrateDataSchema() {
     }
   }
 
+  // 6) 단일 time 필드 -> To-Do/시간표(시작~끝) 구조 변환
+  if (appData.children) {
+    for (const name in appData.children) {
+      const child = appData.children[name];
+      if (migrateTaskTimeFormat(child.weeklySchedule)) migrated = true;
+      if (migrateTaskTimeFormat(child.vacationSchedule)) migrated = true;
+      if (migrateTaskListTimeFormat(child.postponedTasks)) migrated = true;
+    }
+  }
+
   return migrated;
+}
+
+/**
+ * 5-B. 과목 task의 time("" | "HH:MM") 필드를 type/startTime/endTime 구조로 변환
+ * - time이 없으면 To-Do(type:'todo')
+ * - time이 있으면 시간표(type:'schedule'), 종료시간은 같은 날 다음 시작시간(있으면) 또는 +30분(없으면)으로 추론
+ */
+function migrateTaskTimeFormat(scheduleObj) {
+  if (!scheduleObj) return false;
+  let migrated = false;
+
+  DAY_MAP_ENG.forEach(day => {
+    const tasks = scheduleObj[day];
+    if (!tasks || tasks.length === 0) return;
+    if (tasks.every(t => t.type)) return; // 이미 전부 변환됨
+
+    const timedSorted = tasks.filter(t => t.time).sort((a, b) => a.time.localeCompare(b.time));
+
+    tasks.forEach(task => {
+      if (task.type) return;
+      if (!task.time) {
+        task.type = 'todo';
+        task.startTime = '';
+        task.endTime = '';
+      } else {
+        task.type = 'schedule';
+        task.startTime = task.time;
+        const idx = timedSorted.indexOf(task);
+        const next = timedSorted[idx + 1];
+        task.endTime = (next && next.time !== task.time) ? next.time : addMinutesToTime(task.time, 30);
+      }
+      delete task.time;
+      migrated = true;
+    });
+  });
+
+  return migrated;
+}
+
+/** postponedTasks처럼 요일 구조가 아닌 단순 배열용 변환 */
+function migrateTaskListTimeFormat(tasks) {
+  if (!tasks || tasks.length === 0) return false;
+  let migrated = false;
+  tasks.forEach(task => {
+    if (task.type) return;
+    if (!task.time) {
+      task.type = 'todo';
+      task.startTime = '';
+      task.endTime = '';
+    } else {
+      task.type = 'schedule';
+      task.startTime = task.time;
+      task.endTime = addMinutesToTime(task.time, 30);
+    }
+    delete task.time;
+    migrated = true;
+  });
+  return migrated;
+}
+
+function addMinutesToTime(hhmm, minutesToAdd) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = (((h * 60 + m + minutesToAdd) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** 과목의 시간 표시 라벨(시간표: 시작~끝 / To-Do: 오늘 중) */
+function getTimeLabel(task) {
+  if (task.type === 'schedule') {
+    return `<i class="fa-regular fa-clock"></i> ${task.startTime} ~ ${task.endTime}`;
+  }
+  return `<i class="fa-solid fa-calendar-day"></i> 오늘 중`;
+}
+
+/** 시간표 항목이 종료시각을 지났는데 아직 미완료인지 (놓친 시간표) */
+function isScheduleMissed(task, isCompleted) {
+  if (task.type !== 'schedule' || isCompleted) return false;
+  const now = new Date();
+  const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return nowStr > task.endTime;
 }
 
 /**
@@ -791,7 +881,9 @@ function renderDashboard() {
       originalId: h.originalId,
       subject: h.subject,
       target: h.target,
-      time: h.time || "",
+      type: h.type || 'todo',
+      startTime: h.startTime || '',
+      endTime: h.endTime || '',
       isPostponed: true
     }));
 
@@ -801,11 +893,11 @@ function renderDashboard() {
     ...postponedToToday.map(t => ({ ...t, isPostponed: true })),
     ...completedPostponed
   ];
-  
-  // 시간 지정이 있는 것을 우선 정렬하고, 지정이 없는 To-Do (anytime)는 맨 밑으로 정렬
+
+  // 시간표(시작시간 지정)를 우선 정렬하고, To-Do(시간 무관)는 맨 밑으로 정렬
   todaySchedule.sort((a, b) => {
-    const timeA = a.time || "";
-    const timeB = b.time || "";
+    const timeA = a.startTime || "";
+    const timeB = b.startTime || "";
     if (timeA === "" && timeB !== "") return 1;
     if (timeA !== "" && timeB === "") return -1;
     return timeA.localeCompare(timeB);
@@ -827,14 +919,16 @@ function renderDashboard() {
       const isCompleted = todayHistory.some(h => h.id === task.id);
       const completionItem = todayHistory.find(h => h.id === task.id);
       const isPostponed = !!task.isPostponed;
-      
+      const isMissed = isScheduleMissed(task, isCompleted);
+
       const todoItem = document.createElement('div');
       todoItem.className = `todo-item ${isCompleted ? 'completed' : ''}`;
       todoItem.dataset.taskId = task.id;
-      
-      const timeLabel = task.time ? `<i class="fa-regular fa-clock"></i> ${task.time}` : `<i class="fa-solid fa-calendar-day"></i> 오늘 중`;
+
+      const timeLabel = getTimeLabel(task);
       const postponeBadge = isPostponed ? `<span class="postponed-badge"><i class="fa-solid fa-clock-rotate-left"></i> 이월</span>` : '';
-      
+      const missedBadge = isMissed ? `<span class="postponed-badge" style="background: rgba(255, 118, 117, 0.15); color: #ff7675; border-color: rgba(255, 118, 117, 0.3);"><i class="fa-solid fa-triangle-exclamation"></i> 놓침</span>` : '';
+
       todoItem.innerHTML = `
         <div class="todo-left">
           <div class="todo-checkbox-wrapper">
@@ -844,6 +938,7 @@ function renderDashboard() {
             <div style="display: flex; align-items: center; gap: 6px;">
               <span class="todo-subject">${task.subject}</span>
               ${postponeBadge}
+              ${missedBadge}
             </div>
             <span class="todo-title">${task.target}</span>
           </div>
@@ -889,8 +984,8 @@ function renderDashboard() {
       todoItem.className = `todo-item`;
       todoItem.dataset.taskId = task.id;
       
-      const timeLabel = task.time ? `<i class="fa-regular fa-clock"></i> ${task.time}` : `<i class="fa-solid fa-calendar-day"></i> 오늘 중`;
-      
+      const timeLabel = getTimeLabel(task);
+
       todoItem.innerHTML = `
         <div class="todo-left">
           <div class="todo-checkbox-wrapper">
@@ -998,7 +1093,9 @@ async function toggleTaskCompletion(task, event) {
         originalId: hItem.originalId,
         subject: hItem.subject,
         target: hItem.target,
-        time: hItem.time || "",
+        type: hItem.type || 'todo',
+        startTime: hItem.startTime || '',
+        endTime: hItem.endTime || '',
         postponedFromDate: hItem.postponedFromDate,
         targetDate: hItem.postponedTargetDate || todayDateStr,
         targetDay: hItem.postponedTargetDay
@@ -1022,7 +1119,9 @@ async function toggleTaskCompletion(task, event) {
       newHistoryItem.postponedFromDate = task.postponedFromDate;
       newHistoryItem.postponedTargetDate = task.targetDate;
       newHistoryItem.postponedTargetDay = task.targetDay;
-      newHistoryItem.time = task.time || "";
+      newHistoryItem.type = task.type || 'todo';
+      newHistoryItem.startTime = task.startTime || '';
+      newHistoryItem.endTime = task.endTime || '';
     }
     
     todayHistory.push(newHistoryItem);
@@ -1416,7 +1515,9 @@ async function postponeTask(task, targetDay) {
       originalId: task.id,
       subject: task.subject,
       target: task.target,
-      time: task.time || "",
+      type: task.type || 'todo',
+      startTime: task.startTime || '',
+      endTime: task.endTime || '',
       postponedFromDate: todayDateStr,
       targetDate: targetDateStr,
       targetDay: targetDay

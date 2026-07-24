@@ -33,7 +33,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupPinVerification();
   setupTabSystem();
   setupSettingsForm();
-  setupAnytimeCheckbox();
+  setupTaskTypeToggle();
   setupCopyModal();
 });
 
@@ -213,7 +213,86 @@ function migrateDataSchema() {
     }
   }
 
+  // 단일 time 필드 -> To-Do/시간표(시작~끝) 구조 변환 — app.js와 동일 로직
+  if (appData.children) {
+    for (const name in appData.children) {
+      const child = appData.children[name];
+      if (migrateTaskTimeFormat(child.weeklySchedule)) migrated = true;
+      if (migrateTaskTimeFormat(child.vacationSchedule)) migrated = true;
+      if (migrateTaskListTimeFormat(child.postponedTasks)) migrated = true;
+    }
+  }
+
   return migrated;
+}
+
+/**
+ * 과목 task의 time("" | "HH:MM") 필드를 type/startTime/endTime 구조로 변환 — app.js와 동일 로직
+ */
+function migrateTaskTimeFormat(scheduleObj) {
+  if (!scheduleObj) return false;
+  let migrated = false;
+
+  DAY_MAP_ENG.forEach(day => {
+    const tasks = scheduleObj[day];
+    if (!tasks || tasks.length === 0) return;
+    if (tasks.every(t => t.type)) return;
+
+    const timedSorted = tasks.filter(t => t.time).sort((a, b) => a.time.localeCompare(b.time));
+
+    tasks.forEach(task => {
+      if (task.type) return;
+      if (!task.time) {
+        task.type = 'todo';
+        task.startTime = '';
+        task.endTime = '';
+      } else {
+        task.type = 'schedule';
+        task.startTime = task.time;
+        const idx = timedSorted.indexOf(task);
+        const next = timedSorted[idx + 1];
+        task.endTime = (next && next.time !== task.time) ? next.time : addMinutesToTime(task.time, 30);
+      }
+      delete task.time;
+      migrated = true;
+    });
+  });
+
+  return migrated;
+}
+
+function migrateTaskListTimeFormat(tasks) {
+  if (!tasks || tasks.length === 0) return false;
+  let migrated = false;
+  tasks.forEach(task => {
+    if (task.type) return;
+    if (!task.time) {
+      task.type = 'todo';
+      task.startTime = '';
+      task.endTime = '';
+    } else {
+      task.type = 'schedule';
+      task.startTime = task.time;
+      task.endTime = addMinutesToTime(task.time, 30);
+    }
+    delete task.time;
+    migrated = true;
+  });
+  return migrated;
+}
+
+function addMinutesToTime(hhmm, minutesToAdd) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = (((h * 60 + m + minutesToAdd) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** 과목의 시간 표시 라벨(시간표: 시작~끝 / To-Do: 오늘 중) — app.js와 동일 로직 */
+function getTimeLabel(task) {
+  if (task.type === 'schedule') {
+    return `<i class="fa-regular fa-clock"></i> ${task.startTime} ~ ${task.endTime}`;
+  }
+  return `<i class="fa-solid fa-calendar-day"></i> 오늘 중 (To-Do)`;
 }
 
 /** 자녀의 현재 활성 스케줄(학기 중/방학) 반환 — app.js와 동일 로직 */
@@ -471,18 +550,18 @@ function renderWeeklyPlanner() {
         </div>
       `;
     } else {
-      // 시간 지정이 있는 것을 우선 정렬하고, 지정이 없는 To-Do (anytime)는 맨 밑으로 정렬
+      // 시간표(시작시간 지정)를 우선 정렬하고, To-Do(시간 무관)는 맨 밑으로 정렬
       const sortedTasks = [...tasks].sort((a, b) => {
-        const timeA = a.time || "";
-        const timeB = b.time || "";
+        const timeA = a.startTime || "";
+        const timeB = b.startTime || "";
         if (timeA === "" && timeB !== "") return 1;
         if (timeA !== "" && timeB === "") return -1;
         return timeA.localeCompare(timeB);
       });
-      
+
       sortedTasks.forEach(task => {
-        const timeLabel = task.time ? `<i class="fa-regular fa-clock"></i> ${task.time}` : `<i class="fa-solid fa-calendar-day"></i> 오늘 중 (To-Do)`;
-        
+        const timeLabel = getTimeLabel(task);
+
         cardHtml += `
           <div class="admin-task-item">
             <div class="admin-task-details">
@@ -570,8 +649,10 @@ function openTaskModal(day, task = null) {
   const titleEl = document.getElementById('task-modal-title');
   const dayKor = DAY_MAP_KOR[DAY_MAP_ENG.indexOf(day)];
   
-  const anytimeCheckbox = document.getElementById('form-anytime');
-  const timeInput = document.getElementById('form-time');
+  const todoRadio = document.getElementById('form-type-todo');
+  const scheduleRadio = document.getElementById('form-type-schedule');
+  const startInput = document.getElementById('form-start-time');
+  const endInput = document.getElementById('form-end-time');
   const daysGroup = document.getElementById('form-days-group');
 
   if (task) {
@@ -580,22 +661,18 @@ function openTaskModal(day, task = null) {
     document.getElementById('task-form-id').value = task.id;
     document.getElementById('form-subject').value = task.subject;
     document.getElementById('form-target').value = task.target;
-    
+
     // 요일 일괄 추가 박스 숨김
     daysGroup.style.display = 'none';
-    
-    if (!task.time) {
-      anytimeCheckbox.checked = true;
-      timeInput.disabled = true;
-      timeInput.required = false;
-      timeInput.value = '12:00';
-      timeInput.style.opacity = '0.5';
+
+    if (task.type === 'schedule') {
+      scheduleRadio.checked = true;
+      startInput.value = task.startTime || '';
+      endInput.value = task.endTime || '';
     } else {
-      anytimeCheckbox.checked = false;
-      timeInput.disabled = false;
-      timeInput.required = true;
-      timeInput.value = task.time;
-      timeInput.style.opacity = '1';
+      todoRadio.checked = true;
+      startInput.value = '';
+      endInput.value = '';
     }
   } else {
     // 신규 추가 모드
@@ -603,20 +680,20 @@ function openTaskModal(day, task = null) {
     document.getElementById('task-form-id').value = '';
     document.getElementById('form-subject').value = '';
     document.getElementById('form-target').value = '';
-    
+
     // 요일 일괄 추가 박스 보임 및 클릭한 요일만 활성화
     daysGroup.style.display = 'block';
     const dayCheckboxes = document.querySelectorAll('input[name="form-days"]');
     dayCheckboxes.forEach(cb => {
       cb.checked = (cb.value === day);
     });
-    
-    anytimeCheckbox.checked = false;
-    timeInput.disabled = false;
-    timeInput.required = true;
-    timeInput.value = '14:00';
-    timeInput.style.opacity = '1';
+
+    todoRadio.checked = true;
+    startInput.value = '14:00';
+    endInput.value = '14:30';
   }
+
+  updateScheduleTimeGroupVisibility();
 }
 
 function closeTaskModal() {
@@ -636,9 +713,23 @@ taskForm.addEventListener('submit', async (e) => {
   const subject = document.getElementById('form-subject').value.trim();
   const target = document.getElementById('form-target').value.trim();
   
-  const isAnytime = document.getElementById('form-anytime').checked;
-  const time = isAnytime ? "" : document.getElementById('form-time').value;
-  
+  const type = document.querySelector('input[name="form-task-type"]:checked').value;
+  let startTime = '';
+  let endTime = '';
+
+  if (type === 'schedule') {
+    startTime = document.getElementById('form-start-time').value;
+    endTime = document.getElementById('form-end-time').value;
+    if (!startTime || !endTime) {
+      alert('시간표는 시작 시간과 끝나는 시간을 모두 입력해야 합니다.');
+      return;
+    }
+    if (endTime <= startTime) {
+      alert('끝나는 시간은 시작 시간보다 늦어야 합니다.');
+      return;
+    }
+  }
+
   const childData = appData.children[currentSelectedChildPlanner];
   const activeSchedule = getActiveSchedule(childData);
 
@@ -647,7 +738,7 @@ taskForm.addEventListener('submit', async (e) => {
     if (!activeSchedule[day]) activeSchedule[day] = [];
     const taskIdx = activeSchedule[day].findIndex(t => t.id === taskId);
     if (taskIdx > -1) {
-      activeSchedule[day][taskIdx] = { id: taskId, subject, target, time };
+      activeSchedule[day][taskIdx] = { id: taskId, subject, target, type, startTime, endTime };
     }
   } else {
     // 2) 신규 추가 처리 (다중 요일 일괄 추가)
@@ -663,7 +754,7 @@ taskForm.addEventListener('submit', async (e) => {
         activeSchedule[d] = [];
       }
       const newId = `${d}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      activeSchedule[d].push({ id: newId, subject, target, time });
+      activeSchedule[d].push({ id: newId, subject, target, type, startTime, endTime });
     });
   }
   
@@ -1111,21 +1202,17 @@ function importDatabase(file) {
 /**
  * 12. 공용 기능 리스너 셋업
  */
-function setupAnytimeCheckbox() {
-  const anytimeCheckbox = document.getElementById('form-anytime');
-  const timeInput = document.getElementById('form-time');
-  
-  anytimeCheckbox.addEventListener('change', () => {
-    if (anytimeCheckbox.checked) {
-      timeInput.disabled = true;
-      timeInput.required = false;
-      timeInput.style.opacity = '0.5';
-    } else {
-      timeInput.disabled = false;
-      timeInput.required = true;
-      timeInput.style.opacity = '1';
-    }
+function setupTaskTypeToggle() {
+  const typeRadios = document.querySelectorAll('input[name="form-task-type"]');
+  typeRadios.forEach(radio => {
+    radio.addEventListener('change', updateScheduleTimeGroupVisibility);
   });
+}
+
+function updateScheduleTimeGroupVisibility() {
+  const scheduleGroup = document.getElementById('form-schedule-time-group');
+  const isSchedule = document.getElementById('form-type-schedule').checked;
+  scheduleGroup.style.display = isSchedule ? 'block' : 'none';
 }
 
 function setupCopyModal() {
@@ -1163,7 +1250,9 @@ function setupCopyModal() {
           id: `${targetDay}_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
           subject: t.subject,
           target: t.target,
-          time: t.time
+          type: t.type,
+          startTime: t.startTime,
+          endTime: t.endTime
         }));
       });
       
