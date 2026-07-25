@@ -853,7 +853,7 @@ function renderDashboard() {
   const quotes = appData.settings.motivationalQuotes || [];
   if (quotes.length > 0) {
     const quoteIndex = now.getDate() % quotes.length;
-    document.getElementById('motivational-quote').innerText = quotes[quoteIndex];
+    document.getElementById('motivational-quote').innerText = fillQuoteTemplate(quotes[quoteIndex], activeChild);
   }
 
   // 3) 오늘 과목 스케줄 가공 & To-Do 리스트 렌더링
@@ -1349,6 +1349,41 @@ function getFormattedDate(date) {
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * 14. 격려 문구 템플릿 - 등록된 자녀 이름에 맞춰 조사(이/가, 은/는, 아/야)를 붙여 치환
+ * 문구 원문에는 이름을 직접 쓰지 않고 {{name}}, {{name_subj}}, {{name_topic}}, {{name_voc}} 토큰을 사용한다.
+ */
+function hasHangulFinalConsonant(name) {
+  if (!name) return false;
+  const code = name.charCodeAt(name.length - 1);
+  if (code < 0xac00 || code > 0xd7a3) return false; // 완성형 한글이 아니면 판단 불가 -> 기본값 처리
+  return (code - 0xac00) % 28 !== 0;
+}
+
+function getSubjectForm(name) {
+  return name + (hasHangulFinalConsonant(name) ? '이' : '가');
+}
+
+function getTopicForm(name) {
+  return name + (hasHangulFinalConsonant(name) ? '은' : '는');
+}
+
+function getVocativeForm(name) {
+  if (name && name.endsWith('이')) {
+    return name.slice(0, -1) + '아';
+  }
+  return name + (hasHangulFinalConsonant(name) ? '아' : '야');
+}
+
+function fillQuoteTemplate(template, name) {
+  if (!template || !name) return template;
+  return template
+    .replace(/\{\{name_subj\}\}/g, getSubjectForm(name))
+    .replace(/\{\{name_topic\}\}/g, getTopicForm(name))
+    .replace(/\{\{name_voc\}\}/g, getVocativeForm(name))
+    .replace(/\{\{name\}\}/g, name);
 }
 
 function getFallbackMockData() {
