@@ -39,7 +39,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   // 이벤트 리스너 등록
   document.getElementById('theme-toggle-btn').addEventListener('click', toggleTheme);
   document.getElementById('profile-switch-btn').addEventListener('click', showProfileSelector);
-  document.getElementById('vacation-mode-btn').addEventListener('click', toggleVacationMode);
 });
 
 /**
@@ -228,18 +227,18 @@ function migrateDataSchema() {
     }
   }
 
-  // 5) 방학 스케줄 및 스케줄 모드 필드 추가 검증
+  // 5) 학기중/방학 스케줄 이중 구조 폐지 -> 단일 weeklySchedule로 정리
+  //    (scheduleMode 토글 자체를 제거하므로, 남아있는 vacationSchedule/scheduleMode 필드만 삭제한다.
+  //     weeklySchedule은 실제 사용 중인 스케줄이므로 그대로 둔다.)
   if (appData.children) {
     for (const name in appData.children) {
       const child = appData.children[name];
-      if (!child.vacationSchedule) {
-        child.vacationSchedule = {
-          monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
-        };
+      if (child.vacationSchedule !== undefined) {
+        delete child.vacationSchedule;
         migrated = true;
       }
-      if (!child.scheduleMode) {
-        child.scheduleMode = 'default';
+      if (child.scheduleMode !== undefined) {
+        delete child.scheduleMode;
         migrated = true;
       }
     }
@@ -250,7 +249,6 @@ function migrateDataSchema() {
     for (const name in appData.children) {
       const child = appData.children[name];
       if (migrateTaskTimeFormat(child.weeklySchedule)) migrated = true;
-      if (migrateTaskTimeFormat(child.vacationSchedule)) migrated = true;
       if (migrateTaskListTimeFormat(child.postponedTasks)) migrated = true;
     }
   }
@@ -336,21 +334,6 @@ function isScheduleMissed(task, isCompleted) {
   const now = new Date();
   const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   return nowStr > task.endTime;
-}
-
-/**
- * 4-B. 자녀의 현재 활성 스케줄(학기 중/방학) 반환
- */
-function getActiveSchedule(childData) {
-  if (childData.scheduleMode === 'vacation') {
-    if (!childData.vacationSchedule) {
-      childData.vacationSchedule = {
-        monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
-      };
-    }
-    return childData.vacationSchedule;
-  }
-  return childData.weeklySchedule;
 }
 
 // 프로필 관리 기능용 글로벌 변수
@@ -857,8 +840,7 @@ function renderDashboard() {
   }
 
   // 3) 오늘 과목 스케줄 가공 & To-Do 리스트 렌더링
-  const activeSchedule = getActiveSchedule(childData);
-  const rawTodaySchedule = activeSchedule[todayDayNameEng] || [];
+  const rawTodaySchedule = childData.weeklySchedule[todayDayNameEng] || [];
   const todayHistory = childData.history[todayDateStr] || [];
   const postponedTasks = childData.postponedTasks || [];
   
@@ -1032,35 +1014,6 @@ function renderDashboard() {
 
   // 6) 연속 공부 일수 칭찬 보드 갱신
   renderStreakBoard();
-
-  // 7) 방학 모드 버튼 상태 갱신
-  updateVacationModeButton();
-}
-
-/**
- * 7-B. 방학 모드 토글 (부모 인증 필요)
- */
-function toggleVacationMode() {
-  if (!appData || !activeChild || !appData.children[activeChild]) return;
-
-  showParentAuthModal(async () => {
-    const childData = appData.children[activeChild];
-    childData.scheduleMode = childData.scheduleMode === 'vacation' ? 'default' : 'vacation';
-    await saveData();
-    renderDashboard();
-  });
-}
-
-function updateVacationModeButton() {
-  const btn = document.getElementById('vacation-mode-btn');
-  if (!btn || !appData || !activeChild || !appData.children[activeChild]) return;
-
-  const isVacation = appData.children[activeChild].scheduleMode === 'vacation';
-  btn.innerHTML = isVacation
-    ? '<i class="fa-solid fa-umbrella-beach"></i> 방학 모드 (ON)'
-    : '<i class="fa-solid fa-umbrella-beach"></i> 방학 모드';
-  btn.classList.toggle('btn-primary', isVacation);
-  btn.classList.toggle('btn-secondary', !isVacation);
 }
 
 /**
@@ -1168,9 +1121,8 @@ function renderStreakBoard() {
   const todayDateStr = getFormattedDate(now);
   const childData = appData.children[activeChild];
   
-  const activeSchedule = getActiveSchedule(childData);
   const todayDayNameEng = DAY_MAP_ENG[now.getDay()];
-  const todaySchedule = activeSchedule[todayDayNameEng] || [];
+  const todaySchedule = childData.weeklySchedule[todayDayNameEng] || [];
   const todayHistory = childData.history[todayDateStr] || [];
   const isTodayDone = todaySchedule.length > 0 && todaySchedule.every(task => todayHistory.some(h => h.id === task.id));
 
@@ -1180,7 +1132,7 @@ function renderStreakBoard() {
   while (true) {
     const checkDateStr = getFormattedDate(checkDate);
     const dayOfWeekEng = DAY_MAP_ENG[checkDate.getDay()];
-    const scheduledTasks = activeSchedule[dayOfWeekEng] || [];
+    const scheduledTasks = childData.weeklySchedule[dayOfWeekEng] || [];
     const completedHistory = childData.history[checkDateStr] || [];
     
     // 태스크가 없는 날은 연속 기록을 끊지 않고 다음 날로 토스
@@ -1225,7 +1177,6 @@ function renderStreakBoard() {
 function renderWeeklyStatusGrid() {
   const now = new Date();
   const childData = appData.children[activeChild];
-  const activeSchedule = getActiveSchedule(childData);
 
   const currentDay = now.getDay();
   const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
@@ -1239,7 +1190,7 @@ function renderWeeklyStatusGrid() {
     const targetDateStr = getFormattedDate(targetDate);
     const dayOfWeekEng = DAY_MAP_ENG[targetDate.getDay()];
 
-    const scheduledTasks = activeSchedule[dayOfWeekEng] || [];
+    const scheduledTasks = childData.weeklySchedule[dayOfWeekEng] || [];
     const completedHistory = childData.history[targetDateStr] || [];
     
     const dayColId = `day-${dayOfWeekEng.substring(0, 3)}`;

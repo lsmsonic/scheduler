@@ -196,18 +196,16 @@ function migrateDataSchema() {
     migrated = true;
   }
 
-  // 방학 스케줄 및 스케줄 모드 필드 추가 검증
+  // 학기중/방학 스케줄 이중 구조 폐지 -> 단일 weeklySchedule로 정리 — app.js와 동일 로직
   if (appData.children) {
     for (const name in appData.children) {
       const child = appData.children[name];
-      if (!child.vacationSchedule) {
-        child.vacationSchedule = {
-          monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
-        };
+      if (child.vacationSchedule !== undefined) {
+        delete child.vacationSchedule;
         migrated = true;
       }
-      if (!child.scheduleMode) {
-        child.scheduleMode = 'default';
+      if (child.scheduleMode !== undefined) {
+        delete child.scheduleMode;
         migrated = true;
       }
     }
@@ -218,7 +216,6 @@ function migrateDataSchema() {
     for (const name in appData.children) {
       const child = appData.children[name];
       if (migrateTaskTimeFormat(child.weeklySchedule)) migrated = true;
-      if (migrateTaskTimeFormat(child.vacationSchedule)) migrated = true;
       if (migrateTaskListTimeFormat(child.postponedTasks)) migrated = true;
     }
   }
@@ -295,18 +292,6 @@ function getTimeLabel(task) {
   return `<i class="fa-solid fa-calendar-day"></i> 오늘 중 (To-Do)`;
 }
 
-/** 자녀의 현재 활성 스케줄(학기 중/방학) 반환 — app.js와 동일 로직 */
-function getActiveSchedule(childData) {
-  if (childData.scheduleMode === 'vacation') {
-    if (!childData.vacationSchedule) {
-      childData.vacationSchedule = {
-        monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: []
-      };
-    }
-    return childData.vacationSchedule;
-  }
-  return childData.weeklySchedule;
-}
 
 /**
  * 5. PIN 패스워드 인증 모달 로직
@@ -378,8 +363,6 @@ function setupPinVerification() {
 
       // 드롭다운 셀렉트 박스들 채우기
       updateChildSelectDropdowns();
-      setupPlannerModeToggle();
-      updatePlannerModeButtons();
 
       renderWeeklyPlanner();
       renderHistoryLogs();
@@ -430,7 +413,6 @@ function updateChildSelectDropdowns() {
   // 드롭다운 변경 감지 이벤트 설정
   plannerSelect.onchange = () => {
     currentSelectedChildPlanner = plannerSelect.value;
-    updatePlannerModeButtons();
     renderWeeklyPlanner();
   };
   
@@ -464,48 +446,12 @@ function setupTabSystem() {
 }
 
 /**
- * 6-B. 학기 중/방학 스케줄 편집 대상 전환 버튼
- * childData.scheduleMode를 직접 전환하므로, 여기서 바꾸면 어린이 대시보드에도 즉시 반영된다.
- */
-function setupPlannerModeToggle() {
-  const defaultBtn = document.getElementById('planner-mode-default-btn');
-  const vacationBtn = document.getElementById('planner-mode-vacation-btn');
-  if (!defaultBtn || !vacationBtn || defaultBtn.dataset.bound) return;
-
-  defaultBtn.dataset.bound = 'true';
-  [defaultBtn, vacationBtn].forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const childData = appData.children[currentSelectedChildPlanner];
-      if (!childData) return;
-      childData.scheduleMode = btn.dataset.mode;
-      updatePlannerModeButtons();
-      renderWeeklyPlanner();
-      await saveData();
-    });
-  });
-}
-
-function updatePlannerModeButtons() {
-  const defaultBtn = document.getElementById('planner-mode-default-btn');
-  const vacationBtn = document.getElementById('planner-mode-vacation-btn');
-  if (!defaultBtn || !vacationBtn) return;
-
-  const childData = appData.children[currentSelectedChildPlanner];
-  const isVacation = childData && childData.scheduleMode === 'vacation';
-
-  defaultBtn.classList.toggle('btn-primary', !isVacation);
-  defaultBtn.classList.toggle('btn-secondary', isVacation);
-  vacationBtn.classList.toggle('btn-primary', !!isVacation);
-  vacationBtn.classList.toggle('btn-secondary', !isVacation);
-}
-
-/**
  * 7. 주간 스케줄 플래너 렌더링 (자녀 이름 기준)
  */
 function renderWeeklyPlanner() {
   const plannerContainer = document.getElementById('weekly-planner-container');
   plannerContainer.innerHTML = '';
-  
+
   if (!currentSelectedChildPlanner || !appData.children[currentSelectedChildPlanner]) {
     plannerContainer.innerHTML = `
       <div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-secondary);">
@@ -516,12 +462,10 @@ function renderWeeklyPlanner() {
   }
 
   const childData = appData.children[currentSelectedChildPlanner];
-  const activeSchedule = getActiveSchedule(childData);
-  updatePlannerModeButtons();
 
   DAY_MAP_ENG.forEach((dayEng, idx) => {
     const dayKor = DAY_MAP_KOR[idx];
-    const tasks = activeSchedule[dayEng] || [];
+    const tasks = childData.weeklySchedule[dayEng] || [];
     
     const dayCard = document.createElement('div');
     dayCard.className = 'planner-day-card';
@@ -611,7 +555,7 @@ function bindPlannerEvents() {
       const day = btn.dataset.day;
       const taskId = btn.dataset.id;
       const childData = appData.children[currentSelectedChildPlanner];
-      const task = getActiveSchedule(childData)[day].find(t => t.id === taskId);
+      const task = childData.weeklySchedule[day].find(t => t.id === taskId);
       if (task) {
         openTaskModal(day, task);
       }
@@ -624,11 +568,10 @@ function bindPlannerEvents() {
       const day = btn.dataset.day;
       const taskId = btn.dataset.id;
       const childData = appData.children[currentSelectedChildPlanner];
-      const activeSchedule = getActiveSchedule(childData);
-      const task = activeSchedule[day].find(t => t.id === taskId);
+      const task = childData.weeklySchedule[day].find(t => t.id === taskId);
 
       if (confirm(`'${task.subject} - ${task.target}' 과목을 스케줄에서 완전히 삭제하시겠습니까?`)) {
-        activeSchedule[day] = activeSchedule[day].filter(t => t.id !== taskId);
+        childData.weeklySchedule[day] = childData.weeklySchedule[day].filter(t => t.id !== taskId);
         await saveData();
         renderWeeklyPlanner();
       }
@@ -731,7 +674,7 @@ taskForm.addEventListener('submit', async (e) => {
   }
 
   const childData = appData.children[currentSelectedChildPlanner];
-  const activeSchedule = getActiveSchedule(childData);
+  const activeSchedule = childData.weeklySchedule;
 
   if (taskId) {
     // 1) 수정 처리
@@ -1242,7 +1185,7 @@ function setupCopyModal() {
     
     if (confirm(`정말로 '${sourceDayKor}'의 모든 일정을 [${targetDaysKor}]에 덮어씌우시겠습니까?`)) {
       const childData = appData.children[currentSelectedChildPlanner];
-      const activeSchedule = getActiveSchedule(childData);
+      const activeSchedule = childData.weeklySchedule;
       const sourceTasks = activeSchedule[sourceDay] || [];
 
       targetDays.forEach(targetDay => {
