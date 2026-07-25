@@ -1213,19 +1213,58 @@ body.dark-theme .postpone-day-btn:hover {
 }
 
 /* ==========================================
-   14. 모바일 반응형 보강 (Mobile Fine-Tuning)
+   14. 반응형 보강 (태블릿 / 폰 단계 분리)
    ========================================== */
-@media (max-width: 768px) {
+
+/* ---- 14-A. 태블릿 (~601px ~ 1024px): 여백만 다듬고, 다열 배치는 최대한 유지 ---- */
+@media (max-width: 1024px) {
+  .app-container {
+    padding: 18px;
+    gap: 18px;
+  }
+
+  .glass-panel {
+    padding: 24px 20px;
+  }
+
+  .app-header {
+    padding: 18px 20px;
+  }
+
+  /* 버튼 개수가 많아져도 태블릿 가로폭에서는 한 줄에 자연스럽게 배치 */
+  .header-controls {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* 1열 강제 대신, 카드 최소폭만 살짝 줄여서 2열 이상이 자연스럽게 나오도록 */
+  .planner-week-layout {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+
+  /* 태블릿 폭에서는 7일 그리드가 그대로 들어가므로 가로 스크롤로 바꾸지 않음 */
+  .weekly-grid {
+    gap: 4px;
+  }
+
+  .weekly-day-col {
+    padding: 8px 2px;
+    font-size: 10px;
+  }
+}
+
+/* ---- 14-B. 폰 (~600px 이하): 세로 스택/가로 스와이프 등 강한 압축 ---- */
+@media (max-width: 600px) {
   .app-container {
     padding: 12px;
     gap: 16px;
   }
-  
+
   .glass-panel {
     padding: 20px 16px;
     border-radius: var(--border-radius-md);
   }
-  
+
   .app-header {
     padding: 16px;
     flex-direction: column;
@@ -1233,54 +1272,59 @@ body.dark-theme .postpone-day-btn:hover {
     text-align: center;
     gap: 12px;
   }
-  
+
   .logo-section h1 {
     justify-content: center;
     font-size: 20px;
   }
-  
+
   .header-controls {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
-  
+
+  /* 원형 테마토글 버튼은 폭 고정이라 stretch 되지 않으므로, 세로 스택 시 가운데로 정렬 */
+  .header-controls .theme-toggle {
+    align-self: center;
+  }
+
   #live-clock {
     margin-right: 0;
     margin-bottom: 4px;
   }
-  
+
   .welcome-banner {
     flex-direction: column;
     text-align: center;
     padding: 18px;
     gap: 12px;
   }
-  
+
   .banner-avatar {
     width: 64px;
     height: 64px;
     font-size: 36px;
   }
-  
+
   .todo-item {
     padding: 14px 16px;
     gap: 10px;
   }
-  
+
   .todo-left {
     gap: 10px;
   }
-  
+
   .todo-title {
     font-size: 14px;
   }
-  
-  /* 주간 스탬프 가로 스와이프 기능 활성화 */
+
+  /* 주간 스탬프 가로 스와이프 기능 활성화 (폰 폭에서만) */
   .weekly-summary-card {
     padding: 16px 12px;
   }
-  
+
   .weekly-grid {
     display: flex !important;
     overflow-x: auto;
@@ -1289,16 +1333,16 @@ body.dark-theme .postpone-day-btn:hover {
     padding: 4px 2px 10px 2px;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .weekly-grid::-webkit-scrollbar {
     height: 4px;
   }
-  
+
   .weekly-grid::-webkit-scrollbar-thumb {
     background-color: var(--color-primary-light);
     border-radius: 4px;
   }
-  
+
   .weekly-day-col {
     flex: 0 0 46px; /* 모바일에서 고정폭을 주어 좌우 스와이프 구현 */
     background: rgba(0, 0, 0, 0.02);
@@ -1308,26 +1352,37 @@ body.dark-theme .postpone-day-btn:hover {
   body.dark-theme .weekly-day-col {
     background: rgba(255, 255, 255, 0.02);
   }
-  
+
   /* 모바일 PIN 입력칸 이탈 차단 */
   .pin-dot-input {
     width: 40px;
     height: 40px;
     font-size: 20px;
   }
-  
+
   .pin-input-container {
     gap: 8px;
   }
-  
+
   /* 모달 레이아웃 패딩 조절 */
   .modal-content {
     padding: 24px 16px;
     width: 95%;
   }
-  
+
   .planner-week-layout {
     grid-template-columns: 1fr;
+  }
+
+  /* 관리자 페이지: 자녀 선택 + 학기중/방학 토글 줄이 좁은 폰 폭에서 깔끔하게 쌓이도록 */
+  .weekly-planner-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weekly-planner-mode-toggle {
+    margin-left: 0 !important;
+    justify-content: center;
   }
 }
 

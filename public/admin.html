@@ -161,13 +161,13 @@
 
       <!-- [탭 1] 주간 스케줄 플래너 영역 -->
       <div id="weekly-schedule-tab" class="tab-content active">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.02); padding: 12px 18px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border); flex-wrap: wrap;">
+        <div class="weekly-planner-toolbar" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.02); padding: 12px 18px; border-radius: var(--border-radius-md); border: 1px solid var(--card-border); flex-wrap: wrap;">
           <label class="form-label" for="planner-child-select" style="margin-bottom: 0; font-weight: 700; font-size: 14px; white-space: nowrap;"><i class="fa-solid fa-user-graduate"></i> 대상 자녀 선택:</label>
           <select id="planner-child-select" class="form-control" style="width: auto; padding: 6px 12px; font-size: 14px; margin-top: 0;">
             <!-- JS에서 동적 로드 -->
           </select>
 
-          <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+          <div class="weekly-planner-mode-toggle" style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
             <span class="form-label" style="margin-bottom: 0; font-weight: 700; font-size: 14px; white-space: nowrap;"><i class="fa-solid fa-umbrella-beach"></i> 적용 스케줄:</span>
             <button type="button" id="planner-mode-default-btn" class="btn btn-secondary" data-mode="default" style="padding: 6px 14px; font-size: 13px;">학기 중</button>
             <button type="button" id="planner-mode-vacation-btn" class="btn btn-secondary" data-mode="vacation" style="padding: 6px 14px; font-size: 13px;">방학</button>
